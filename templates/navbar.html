@@ -1,0 +1,94 @@
+<nav class="navbar navbar-expand-lg navbar-top-enterprise py-0">
+    <div class="container-fluid max-width-1600 px-3 px-xl-4">
+        <!-- Brand Logo & Name -->
+        <a href="{{ url_for('dashboard') }}" class="nav-brand-enterprise me-3 me-xl-4 py-2">
+            <i class="bi bi-shield-lock-fill text-primary fs-3"></i>
+            <span class="fw-bold">Zero Trust NIDS</span>
+        </a>
+
+        <!-- Responsive Hamburger Toggler for Tablet/Mobile -->
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarEnterpriseMenu" aria-controls="navbarEnterpriseMenu" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarEnterpriseMenu">
+            {% if user %}
+            <!-- Horizontal Navigation Links with Blue Active Underline -->
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1 gap-xl-2 align-items-lg-center">
+                <li class="nav-item">
+                    <a href="{{ url_for('dashboard') }}" class="nav-link-blue-underline {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                        Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('dataset.dataset_list_page') }}" class="nav-link-blue-underline {% if request.endpoint == 'dataset.dataset_list_page' %}active{% endif %}">
+                        Datasets
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('dataset.dataset_compare_page') }}" class="nav-link-blue-underline {% if request.endpoint == 'dataset.dataset_compare_page' %}active{% endif %}">
+                        Compare
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('model.train_page') }}" class="nav-link-blue-underline {% if request.endpoint == 'model.train_page' %}active{% endif %}">
+                        Training
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="{{ url_for('model.report_page') }}" class="nav-link-blue-underline {% if request.endpoint == 'model.report_page' %}active{% endif %}">
+                        Reports
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('dashboard') }}#audit-trail-section" class="nav-link-blue-underline">
+                        Audit Logs
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Search Bar, Notifications & User Identity -->
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2 gap-xl-3 py-2 py-lg-0 ms-lg-auto">
+                <!-- Search Input -->
+                <div class="input-group input-group-sm" style="width: 170px;">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" class="form-control border-start-0" placeholder="Search system..." aria-label="Search">
+                </div>
+
+                <!-- Notifications Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-light btn-sm border px-2 py-1 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="System Notifications">
+                        <i class="bi bi-bell text-primary fs-6"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+                            <span class="visually-hidden">Alerts</span>
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm fs-7">
+                        <li><h6 class="dropdown-header">System Notifications</h6></li>
+                        <li><a class="dropdown-item text-secondary" href="#"><i class="bi bi-check-circle-fill text-success me-1"></i> LSTM Engine initialized</a></li>
+                        <li><a class="dropdown-item text-secondary" href="#"><i class="bi bi-shield-check text-primary me-1"></i> Zero Trust RBAC Active</a></li>
+                    </ul>
+                </div>
+
+                <div class="vr h-50 d-none d-lg-block my-auto text-secondary opacity-25"></div>
+
+                <!-- User Profile & Role Badge Inline -->
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fw-semibold text-dark fs-6">{{ user.username }}</span>
+                    {% if user.role == 'Admin' %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-7 py-1 px-2"><i class="bi bi-shield-lock-fill me-1"></i> ADMIN PORTAL</span>
+                    {% else %}
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-7 py-1 px-2"><i class="bi bi-person-fill me-1"></i> USER PORTAL</span>
+                    {% endif %}
+
+                    <!-- Logout Button -->
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger btn-sm px-2.5 py-1 ms-1 d-inline-flex align-items-center gap-1" title="Logout Session">
+                        <i class="bi bi-box-arrow-right"></i> <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</nav>

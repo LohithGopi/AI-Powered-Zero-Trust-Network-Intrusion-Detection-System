@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Dataset Comparison — Zero Trust Platform{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">Dataset Comparison Matrix</h2>
+        <p class="text-secondary fs-6 mb-0">Statistical summary and feature variance across registered datasets</p>
+    </div>
+    <button id="btn-fetch-compare" class="btn btn-primary btn-sm px-3">
+        <i class="bi bi-arrow-repeat me-1"></i> Refresh Comparison
+    </button>
+</div>
+
+<div class="card-enterprise mb-4">
+    <div class="card-enterprise-header">
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-ui-checks text-primary me-2"></i> Select Inventory Items to Compare</h5>
+    </div>
+    <div class="d-flex flex-wrap gap-3" id="dataset-checkboxes">
+        {% for ds in datasets %}
+        <div class="form-check me-3">
+            <input class="form-check-input ds-checkbox" type="checkbox" value="{{ ds.id }}" id="ds-check-{{ ds.id }}" checked>
+            <label class="form-check-label text-dark fs-7 font-medium" for="ds-check-{{ ds.id }}">
+                {{ ds.filename }} <span class="badge bg-light text-secondary border ms-1">{{ ds.dataset_type }}</span>
+            </label>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card-enterprise mb-4">
+    <div class="table-responsive">
+        <table class="table table-enterprise" id="comparison-table">
+            <thead>
+                <tr>
+                    <th>Metric / Attribute</th>
+                    <!-- Dynamic Headers via JS -->
+                </tr>
+            </thead>
+            <tbody id="comparison-body">
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">Click "Refresh Comparison" to compute dataset metrics.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card-enterprise bg-light d-flex flex-row justify-content-between align-items-center">
+    <div>
+        <h5 class="fw-bold text-dark mb-1">Ready for Neural Network Training?</h5>
+        <p class="text-secondary fs-7 mb-0">Proceed to the Machine Learning Engine panel to run feature scaling and model training.</p>
+    </div>
+    <a href="{{ url_for('model.train_page') }}" class="btn btn-primary">
+        Proceed to Model Training <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadComparison() {
+    const checked = Array.from(document.querySelectorAll('.ds-checkbox:checked')).map(cb => parseInt(cb.value));
+    
+    try {
+        const response = await NIDS.apiFetch('/api/dataset/compare', {
+            method: 'POST',
+            body: JSON.stringify({ dataset_ids: checked })
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            renderComparisonTable(data.comparison);
+        } else {
+            NIDS.showToast("Error", data.error || "Failed to load comparison matrix", "danger");
+        }
+    } catch (e) {
+        NIDS.showToast("Error", "Server error", "danger");
+    }
+}
+
+function renderComparisonTable(items) {
+    const tableHeader = document.querySelector('#comparison-table thead tr');
+    const tableBody = document.querySelector('#comparison-body');
+
+    if (!items.length) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No datasets selected.</td></tr>`;
+        return;
+    }
+
+    let headerHtml = `<th>Metric / Attribute</th>`;
+    items.forEach(item => {
+        headerHtml += `
+            <th class="text-center">
+                <div class="fw-bold text-dark fs-6">${item.filename}</div>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-7 mt-1">${item.dataset_type}</span>
+            </th>
+        `;
+    });
+    tableHeader.innerHTML = headerHtml;
+
+    const metrics = [
+        { key: 'rows', label: 'Row Count', format: v => v.toLocaleString() },
+        { key: 'columns', label: 'Column Count', format: v => v },
+        { key: 'missing_values', label: 'Missing Values', format: v => `<span class="${v > 0 ? 'text-warning fw-bold' : 'text-success'}">${v}</span>` },
+        { key: 'duplicate_records', label: 'Duplicate Records', format: v => `<span class="${v > 0 ? 'text-warning fw-bold' : 'text-success'}">${v}</span>` },
+        { key: 'feature_count', label: 'Input Features', format: v => v },
+        { key: 'attack_classes', label: 'Attack Classes', format: v => Array.isArray(v) ? v.join(', ') : v },
+        { key: 'file_size_mb', label: 'File Size', format: v => `${v} MB` }
+    ];
+
+    let bodyHtml = '';
+    metrics.forEach(m => {
+        bodyHtml += `<tr><td class="fw-medium text-secondary">${m.label}</td>`;
+        items.forEach(item => {
+            const val = m.format(item[m.key]);
+            bodyHtml += `<td class="text-center fw-semibold text-dark">${val}</td>`;
+        });
+        bodyHtml += `</tr>`;
+    });
+
+    bodyHtml += `<tr><td class="fw-bold text-primary">Active Selection</td>`;
+    items.forEach(item => {
+        bodyHtml += `
+            <td class="text-center">
+                <button onclick="selectDatasetAndTrain(${item.id})" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-check-lg me-1"></i> Select Active
+                </button>
+            </td>
+        `;
+    });
+    bodyHtml += `</tr>`;
+
+    tableBody.innerHTML = bodyHtml;
+}
+
+async function selectDatasetAndTrain(id) {
+    try {
+        const response = await NIDS.apiFetch('/api/dataset/select', {
+            method: 'POST',
+            body: JSON.stringify({ id: id })
+        });
+        if (response.ok) {
+            NIDS.showToast("Success", "Active dataset set!", "success");
+            setTimeout(() => { window.location.href = "/train-model"; }, 600);
+        }
+    } catch (e) {
+        NIDS.showToast("Error", "Selection failed", "danger");
+    }
+}
+
+document.getElementById('btn-fetch-compare').addEventListener('click', loadComparison);
+document.addEventListener('DOMContentLoaded', loadComparison);
+</script>
+{% endblock %}

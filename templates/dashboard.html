@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Security Operations Center{% endblock %}
+
+{% block extra_head %}
+<!-- Dashboard Custom CSS -->
+<link href="{{ url_for('static', filename='css/dashboard.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-2 border-bottom">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">Security Operations Center Dashboard</h2>
+        <p class="text-secondary fs-6 mb-0">AI-Powered Zero Trust Network Intrusion Detection System</p>
+    </div>
+    <div class="d-flex gap-2 mt-3 mt-md-0">
+        <a href="{{ url_for('dataset.upload_page') }}" class="btn btn-primary px-3.5 py-2 fw-medium d-inline-flex align-items-center gap-2">
+            <i class="bi bi-cloud-upload"></i> Upload Dataset
+        </a>
+        <a href="{{ url_for('model.train_page') }}" class="btn btn-outline-primary px-3.5 py-2 fw-medium d-inline-flex align-items-center gap-2">
+            <i class="bi bi-play-circle"></i> Train Model
+        </a>
+    </div>
+</div>
+
+<!-- Telemetry Cards (6 KPI Cards Grid) -->
+<div class="row g-3 mb-4">
+    <!-- 1. Uploaded Datasets -->
+    <div class="col-md-4 col-xl-2">
+        <div class="soc-card-12 h-100">
+            <div class="telemetry-card">
+                <div class="telemetry-icon-box blue">
+                    <i class="bi bi-database"></i>
+                </div>
+                <div>
+                    <div class="telemetry-title">Uploaded Datasets</div>
+                    <div class="telemetry-value">{{ stats.total_datasets }}</div>
+                    <div class="telemetry-status">Updated Today</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Active Dataset -->
+    <div class="col-md-4 col-xl-2">
+        <div class="soc-card-12 h-100">
+            <div class="telemetry-card">
+                <div class="telemetry-icon-box navy">
+                    <i class="bi bi-file-earmark-code"></i>
+                </div>
+                <div>
+                    <div class="telemetry-title">Active Dataset</div>
+                    <div class="telemetry-value fs-6 text-truncate" style="max-width: 110px;" title="{{ stats.selected_dataset or 'None Selected' }}">
+                        {{ stats.selected_dataset or 'None' }}
+                    </div>
+                    <div class="telemetry-status">{{ "{:,}".format(stats.selected_rows) }} Rows</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Model Status -->
+    <div class="col-md-4 col-xl-2">
+        <div class="soc-card-12 h-100">
+            <div class="telemetry-card">
+                <div class="telemetry-icon-box {% if stats.model_trained %}green{% else %}orange{% endif %}">
+                    <i class="bi bi-server"></i>
+                </div>
+                <div>
+                    <div class="telemetry-title">Model Status</div>
+                    <div class="mt-1">
+                        {% if stats.model_trained %}
+                        <span class="badge-status badge-status-success"><i class="bi bi-check-circle-fill"></i> Operational</span>
+                        {% else %}
+                        <span class="badge-status badge-status-warning"><i class="bi bi-exclamation-triangle-fill"></i> Untrained</span>
+                        {% endif %}
+                    </div>
+                    <div class="telemetry-status mt-1">Keras Model State</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Current Model -->
+    <div class="col-md-4 col-xl-2">
+        <div class="soc-card-12 h-100">
+            <div class="telemetry-card">
+                <div class="telemetry-icon-box blue">
+                    <i class="bi bi-diagram-3"></i>
+                </div>
+                <div>
+                    <div class="telemetry-title">Current Model</div>
+                    <div class="telemetry-value fs-6 mt-1">LSTM Network</div>
+                    <div class="telemetry-status">TensorFlow / Keras</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Training Accuracy -->
+    <div class="col-md-4 col-xl-2">
+        <div class="soc-card-12 h-100">
+            <div class="telemetry-card">
+                <div class="telemetry-icon-box green">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div>
+                    <div class="telemetry-title">Training Accuracy</div>
+                    <div class="telemetry-value text-success">{{ stats.latest_acc }}</div>
+                    <div class="telemetry-status">Evaluation Score</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Last Training -->
+    <div class="col-md-4 col-xl-2">
+        <div class="soc-card-12 h-100">
+            <div class="telemetry-card">
+                <div class="telemetry-icon-box orange">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                    <div class="telemetry-title">Last Training</div>
+                    <div class="telemetry-value fs-6 mt-1 text-dark">{{ stats.last_trained }}</div>
+                    <div class="telemetry-status">Completed Session</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Operational Action Panel (3 Action Cards Grid) -->
+<div class="mb-4">
+    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-gear-wide-connected text-primary me-2"></i> Operational Action Panel</h5>
+    <div class="row g-3">
+        <!-- 1. Upload Network CSV -->
+        <div class="col-md-4">
+            <div class="action-card h-100">
+                <div>
+                    <div class="action-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+                    <div class="action-title">Upload Network CSV</div>
+                    <div class="action-desc">Import intrusion detection datasets (NSL-KDD, UNSW-NB15, CICIDS2017, Custom CSV)</div>
+                </div>
+                <a href="{{ url_for('dataset.upload_page') }}" class="btn btn-outline-primary btn-sm w-100 d-flex justify-content-between align-items-center">
+                    <span>Upload CSV</span>
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- 2. Compare Datasets -->
+        <div class="col-md-4">
+            <div class="action-card h-100">
+                <div>
+                    <div class="action-icon text-warning"><i class="bi bi-bar-chart-steps"></i></div>
+                    <div class="action-title">Compare Datasets</div>
+                    <div class="action-desc">Compare uploaded datasets and statistics before running preprocessing routines</div>
+                </div>
+                <a href="{{ url_for('dataset.dataset_compare_page') }}" class="btn btn-outline-warning btn-sm w-100 d-flex justify-content-between align-items-center">
+                    <span>Compare Matrix</span>
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- 3. Preprocess & Train Model -->
+        <div class="col-md-4">
+            <div class="action-card h-100 bg-primary bg-opacity-10 border-primary-subtle">
+                <div>
+                    <div class="action-icon text-primary"><i class="bi bi-play-circle-fill"></i></div>
+                    <div class="action-title">Preprocess & Train Model</div>
+                    <div class="action-desc">Run normalization, feature encoding, and train the Keras LSTM intrusion detector</div>
+                </div>
+                <a href="{{ url_for('model.train_page') }}" class="btn btn-primary btn-sm w-100 d-flex justify-content-between align-items-center">
+                    <span>Start Training</span>
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Security Audit Trail Table Section (Full Width) -->
+<div class="soc-card-12" id="audit-trail-section">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+        <div>
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-shield-check text-primary me-2"></i> Security Audit Trail</h5>
+            <span class="text-secondary fs-7">Real-time log of security, authentication, and system events</span>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <!-- Search Box -->
+            <div class="input-group input-group-sm" style="width: 240px;">
+                <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="audit-search" class="form-control" placeholder="Search logs...">
+            </div>
+            <!-- CSV Export Button -->
+            <button id="btn-export-csv" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+                <i class="bi bi-download"></i> Export CSV
+            </button>
+        </div>
+    </div>
+
+    <div class="audit-table-container">
+        <table class="table table-audit" id="audit-trail-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Status</th>
+                    <th>IP Address</th>
+                    <th>Event Details</th>
+                </tr>
+            </thead>
+            <tbody id="audit-table-body">
+                {% for log in audit_logs %}
+                <tr>
+                    <td class="text-muted fs-7">{{ log.timestamp }}</td>
+                    <td class="fw-semibold text-dark">{{ log.username }}</td>
+                    <td><code class="text-primary bg-light px-2 py-0.5 rounded fs-7">{{ log.action }}</code></td>
+                    <td>
+                        {% if log.status == 'SUCCESS' %}
+                        <span class="badge-status badge-status-success"><i class="bi bi-check-lg"></i> SUCCESS</span>
+                        {% elif log.status == 'REJECTED' %}
+                        <span class="badge-status badge-status-warning"><i class="bi bi-slash-circle"></i> REJECTED</span>
+                        {% else %}
+                        <span class="badge-status badge-status-danger"><i class="bi bi-x-circle"></i> FAILED</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted fs-7">{{ log.ip_address or '127.0.0.1' }}</td>
+                    <td class="text-secondary fs-7 text-truncate" style="max-width: 320px;" title="{{ log.details }}">{{ log.details }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No audit events logged yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Dashboard Interactivity Script -->
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

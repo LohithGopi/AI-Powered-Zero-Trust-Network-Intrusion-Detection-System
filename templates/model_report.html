@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Evaluation Report — Zero Trust Platform{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">Model Evaluation & Verification Report</h2>
+        <p class="text-secondary fs-6 mb-0">Quantitative analysis of trained LSTM model performance on test partition</p>
+    </div>
+    <a href="{{ url_for('model.train_page') }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-arrow-repeat me-1"></i> Retrain Model
+    </a>
+</div>
+
+{% if report %}
+<!-- Metric Score Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card-enterprise text-center py-3">
+            <span class="text-muted fs-7 d-block mb-1">Accuracy</span>
+            <div class="fs-2 fw-bold text-success">{{ (report.accuracy * 100)|round(2) }}%</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card-enterprise text-center py-3">
+            <span class="text-muted fs-7 d-block mb-1">Precision</span>
+            <div class="fs-2 fw-bold text-primary">{{ (report.precision * 100)|round(2) }}%</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card-enterprise text-center py-3">
+            <span class="text-muted fs-7 d-block mb-1">Recall</span>
+            <div class="fs-2 fw-bold text-info">{{ (report.recall * 100)|round(2) }}%</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card-enterprise text-center py-3">
+            <span class="text-muted fs-7 d-block mb-1">F1 Score</span>
+            <div class="fs-2 fw-bold text-warning">{{ (report.f1_score * 100)|round(2) }}%</div>
+        </div>
+    </div>
+</div>
+
+<!-- Visual Charts Row: Confusion Matrix & ROC Curve -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card-enterprise h-100">
+            <div class="card-enterprise-header">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-grid-3x3 text-secondary me-2"></i> Confusion Matrix Heatmap</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered text-center align-middle fs-7 mb-0">
+                    <thead>
+                        <tr class="bg-light text-muted">
+                            <th>Actual \ Pred</th>
+                            {% for cls in report.classes %}
+                            <th>{{ cls }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in report.confusion_matrix %}
+                        {% set outer_loop = loop %}
+                        <tr>
+                            <td class="fw-bold bg-light text-dark">{{ report.classes[outer_loop.index0] }}</td>
+                            {% for cell in row %}
+                            <td style="background-color: rgba(37, 99, 235, {{ (cell / 100) if cell < 100 else 0.85 }}); color: {{ '#FFFFFF' if cell > 15 else '#111827' }};" class="fw-bold fs-6">
+                                {{ cell }}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card-enterprise h-100">
+            <div class="card-enterprise-header">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-graph-up text-secondary me-2"></i> Receiver Operating Characteristic (ROC)</h5>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">AUC: {{ report.roc_curve.auc }}</span>
+            </div>
+            <div style="height: 270px;">
+                <canvas id="rocChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Classification Report Table -->
+<div class="card-enterprise">
+    <div class="card-enterprise-header">
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-card-checklist text-secondary me-2"></i> Detailed Classification Report</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-enterprise">
+            <thead>
+                <tr>
+                    <th>Class Name</th>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                    <th>F1-Score</th>
+                    <th>Support (Samples)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key, metrics in report.classification_report.items() %}
+                {% if key not in ['accuracy', 'macro avg', 'weighted avg'] %}
+                <tr>
+                    <td class="fw-semibold text-dark">{{ key }}</td>
+                    <td class="text-primary font-semibold">{{ (metrics.precision * 100)|round(2) }}%</td>
+                    <td class="text-info font-semibold">{{ (metrics.recall * 100)|round(2) }}%</td>
+                    <td class="text-warning font-semibold">{{ (metrics['f1-score'] * 100)|round(2) }}%</td>
+                    <td class="text-muted">{{ metrics.support }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card-enterprise text-center p-5 my-4">
+    <i class="bi bi-file-earmark-bar-graph fs-1 text-muted mb-3 d-block"></i>
+    <h4 class="fw-bold text-dark mb-1">No Evaluation Report Available</h4>
+    <p class="text-secondary fs-7 mb-3">No model evaluation results recorded yet. Launch training to generate metrics.</p>
+    <a href="{{ url_for('model.train_page') }}" class="btn btn-primary">
+        <i class="bi bi-play-circle me-2"></i> Train Model Now
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if report and report.roc_curve and report.roc_curve.fpr %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const rocData = {{ report.roc_curve | tojson }};
+    const ctx = document.getElementById('rocChart').getContext('2d');
+
+    const chartData = rocData.fpr.map((fprVal, idx) => ({
+        x: fprVal,
+        y: rocData.tpr[idx]
+    }));
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: `ROC Curve (AUC = ${rocData.auc})`,
+                data: chartData,
+                borderColor: '#2563EB',
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                fill: true,
+                tension: 0.1
+            }, {
+                label: 'Random Baseline',
+                data: [{x: 0, y: 0}, {x: 1, y: 1}],
+                borderColor: '#9CA3AF',
+                borderDash: [4, 4],
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'linear',
+                    title: { display: true, text: 'False Positive Rate (FPR)', color: '#4B5563' },
+                    grid: { color: '#E5E7EB' },
+                    ticks: { color: '#4B5563' },
+                    min: 0, max: 1
+                },
+                y: {
+                    title: { display: true, text: 'True Positive Rate (TPR)', color: '#4B5563' },
+                    grid: { color: '#E5E7EB' },
+                    ticks: { color: '#4B5563' },
+                    min: 0, max: 1
+                }
+            },
+            plugins: {
+                legend: { labels: { color: '#111827' } }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

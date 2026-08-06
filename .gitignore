@@ -1,0 +1,60 @@
+# Python & Environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.pem
+*.key
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+database/database.db
+
+# Machine Learning Models & Serialized Artifacts
+models/*.keras
+models/*.h5
+models/*.pkl
+models/*.joblib
+models/*.onnx
+!models/.gitkeep
+
+# Dataset Files & Uploads
+datasets/raw/*
+!datasets/raw/.gitkeep
+datasets/processed/*
+!datasets/processed/.gitkeep
+uploads/*
+!uploads/.gitkeep
+
+# Logs & Temporary Files
+*.log
+logs/
+*.tmp
+*.temp
+
+# IDE & Editor Specific
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# PDF Reports (Optional local outputs)
+*.pdf

@@ -1,0 +1,134 @@
+/* Enterprise Full-Width SOC Dashboard Stylesheet */
+
+:root {
+    --soc-primary: #2563EB;
+    --soc-primary-hover: #1D4ED8;
+    --soc-bg: #F6F8FC;
+    --soc-card-bg: #FFFFFF;
+    --soc-text: #111827;
+    --soc-text-muted: #6B7280;
+    --soc-border: #E5E7EB;
+    
+    --soc-success: #16A34A;
+    --soc-warning: #F59E0B;
+    --soc-danger: #DC2626;
+
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+}
+
+/* Full Width Telemetry Cards */
+.telemetry-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.telemetry-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.telemetry-icon-box.blue { background-color: #EFF6FF; color: #2563EB; }
+.telemetry-icon-box.green { background-color: #F0FDF4; color: #16A34A; }
+.telemetry-icon-box.orange { background-color: #FFFBEB; color: #F59E0B; }
+.telemetry-icon-box.red { background-color: #FEF2F2; color: #DC2626; }
+.telemetry-icon-box.navy { background-color: #EEF2FF; color: #1E3A8A; }
+
+.telemetry-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--soc-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.telemetry-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--soc-text);
+    line-height: 1.25;
+}
+
+.telemetry-status {
+    font-size: 0.775rem;
+    color: var(--soc-text-muted);
+}
+
+/* Action Cards */
+.action-card {
+    background-color: var(--soc-card-bg);
+    border: 1px solid var(--soc-border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.18s ease-in-out, box-shadow 0.18s ease-in-out;
+}
+
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Audit Table */
+.audit-table-container {
+    max-height: 440px;
+    overflow-y: auto;
+}
+
+.table-audit {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-audit th {
+    position: sticky;
+    top: 0;
+    background-color: #F8FAFC;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.775rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--soc-border);
+    z-index: 10;
+}
+
+.table-audit td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--soc-border);
+    vertical-align: middle;
+    font-size: 0.875rem;
+}
+
+.table-audit tbody tr:hover {
+    background-color: #F8FAFC;
+}
+
+.badge-status {
+    padding: 0.3em 0.7em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.badge-status-success { background-color: #DCFCE7; color: #15803D; }
+.badge-status-warning { background-color: #FEF3C7; color: #B45309; }
+.badge-status-danger  { background-color: #FEE2E2; color: #B91C1C; }

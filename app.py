@@ -1,0 +1,105 @@
+import os
+from flask import Flask, render_template, redirect, url_for, g, jsonify, request
+from config import Config
+from database.init_db import init_db, db, DatasetHistory, ModelHistory, AuditLog
+from security.jwt_auth import get_token_from_request, decode_token
+from security.zero_trust import jwt_required
+from api.auth_routes import auth_bp
+from api.dataset_routes import dataset_bp
+from api.model_routes import model_bp
+from utils.logger import logger, log_audit_event
+
+def create_app():
+    """Application Factory for AI Zero Trust NIDS Flask Web Application."""
+    app = Flask(__name__)
+    app.config.from_object(Config)
+
+    # Initialize app directories and database
+    Config.init_app(app)
+    init_db(app)
+
+    # Register Blueprints
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(dataset_bp)
+    app.register_blueprint(model_bp)
+
+
+
+    @app.before_request
+    def load_user_context():
+        """Zero Trust Context Middleware: Extract token & user details if present."""
+        g.user = None
+        token = get_token_from_request()
+        if token:
+            payload = decode_token(token)
+            if "error" not in payload:
+                g.user = payload
+
+    @app.route("/")
+    @jwt_required
+    def dashboard():
+        """Main Zero Trust Executive Dashboard."""
+        datasets = DatasetHistory.query.all()
+        selected_ds = DatasetHistory.query.filter_by(is_selected=True).first()
+        if not selected_ds and datasets:
+            selected_ds = datasets[0]
+
+        latest_model = ModelHistory.query.order_by(ModelHistory.trained_at.desc()).first()
+        audit_logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(15).all()
+
+        stats = {
+            "total_datasets": len(datasets),
+            "selected_dataset": selected_ds.filename if selected_ds else None,
+            "selected_rows": selected_ds.row_count if selected_ds else 0,
+            "selected_cols": selected_ds.col_count if selected_ds else 0,
+            "model_trained": latest_model is not None,
+            "last_trained": latest_model.trained_at.strftime("%Y-%m-%d %H:%M") if latest_model else "Never",
+            "latest_acc": f"{round(latest_model.accuracy * 100, 2)}%" if latest_model else "N/A"
+        }
+
+        return render_template(
+            "dashboard.html",
+            stats=stats,
+            audit_logs=[log.to_dict() for log in audit_logs],
+            user=g.user
+        )
+
+    # Error Handlers
+    @app.errorhandler(400)
+    def bad_request(e):
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Bad Request", "message": str(e)}), 400
+        return render_template("base.html", error="Bad Request"), 400
+
+    @app.errorhandler(401)
+    def unauthorized(e):
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Unauthorized", "message": "JWT Token Required"}), 401
+        return redirect(url_for("auth.login_page"))
+
+    @app.errorhandler(403)
+    def forbidden(e):
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Forbidden", "message": "Access Denied by Zero Trust RBAC Policy"}), 403
+        return jsonify({"error": "Access Denied. Insufficient permissions."}), 403
+
+    @app.errorhandler(404)
+    def page_not_found(e):
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Resource Not Found"}), 404
+        return render_template("base.html", error="Page Not Found"), 404
+
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        logger.error(f"Unhandled Server Exception: {str(e)}")
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Internal Server Error", "message": str(e)}), 500
+        return render_template("base.html", error="Internal Server Error"), 500
+
+    return app
+
+app = create_app()
+
+if __name__ == "__main__":
+    logger.info("Starting AI-Powered Zero Trust NIDS Flask Web Server on http://127.0.0.1:5000")
+    app.run(host="127.0.0.1", port=5000, debug=True)

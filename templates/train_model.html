@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Model Training — Zero Trust Platform{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">Model Training Interface</h2>
+        <p class="text-secondary fs-6 mb-0">Configure hyperparameters, select target dataset, and train Keras LSTM neural network</p>
+    </div>
+    <a href="{{ url_for('model.report_page') }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-file-earmark-bar-graph me-1"></i> Latest Evaluation Report
+    </a>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column (Dataset Selection, Hyperparameters & Preprocessing Summary) -->
+    <div class="col-lg-4">
+        <div class="card-enterprise mb-4">
+            <div class="card-enterprise-header">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-sliders text-primary me-2"></i> Model Hyperparameters</h5>
+            </div>
+
+            <form id="train-form">
+                <!-- Target Dataset Picker (Selected from Datasets Section) -->
+                <div class="mb-3">
+                    <label class="form-label text-dark font-medium fs-7 mb-1">
+                        <i class="bi bi-database-check text-primary me-1"></i> Select Dataset from Inventory
+                    </label>
+                    <select id="dataset_id" class="form-select form-control-enterprise" required>
+                        {% for ds in datasets %}
+                        <option value="{{ ds.id }}" {% if dataset and ds.id == dataset.id %}selected{% elif ds.is_selected %}selected{% endif %}>
+                            {{ ds.filename }} ({{ "{:,}".format(ds.row_count) }} Rows — {{ ds.dataset_type }})
+                        </option>
+                        {% else %}
+                        <option value="" disabled selected>No datasets found. Please upload a dataset first.</option>
+                        {% endfor %}
+                    </select>
+                    <span class="text-secondary fs-7">Choose any uploaded dataset from your Datasets section to train on.</span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-dark font-medium fs-7 mb-1">Training Epochs</label>
+                    <input type="number" id="epochs" class="form-control form-control-enterprise" value="10" min="1" max="100" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-dark font-medium fs-7 mb-1">Batch Size</label>
+                    <select id="batch_size" class="form-select form-control-enterprise">
+                        <option value="32" selected>32 (Standard)</option>
+                        <option value="64">64 (Batch)</option>
+                        <option value="16">16 (Micro)</option>
+                    </select>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label text-dark font-medium fs-7 mb-1">Optimizer</label>
+                        <input type="text" class="form-control form-control-enterprise" value="Adam" readonly>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-dark font-medium fs-7 mb-1">Learning Rate</label>
+                        <input type="text" class="form-control form-control-enterprise" value="0.001" readonly>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-dark font-medium fs-7 mb-1">Loss Function</label>
+                    <input type="text" class="form-control form-control-enterprise" value="Sparse Categorical Crossentropy" readonly>
+                </div>
+
+                <button type="submit" id="btn-start-train" class="btn btn-enterprise-primary w-100 py-2.5" {% if not datasets %}disabled{% endif %}>
+                    <i class="bi bi-play-circle me-2"></i> Start Training Model
+                </button>
+            </form>
+        </div>
+
+        <div class="card-enterprise">
+            <div class="card-enterprise-header">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-gear text-secondary me-2"></i> Preprocessing Overview</h5>
+            </div>
+            <div id="preproc-summary" class="text-secondary fs-7">
+                Select your dataset and click "Start Training Model" to run automated deduplication, missing value imputation, LabelEncoding, and StandardScaler normalization.
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column (Real-time Execution & Chart) -->
+    <div class="col-lg-8">
+        <div class="card-enterprise mb-4">
+            <div class="card-enterprise-header">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-activity text-primary me-2"></i> Real-Time Training Progress</h5>
+                <span id="status-text" class="badge bg-secondary-subtle text-secondary border px-2.5 py-1">Idle</span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress mb-4" style="height: 18px; border-radius: 6px;">
+                <div id="training-progress-bar" class="progress-bar bg-primary" role="progressbar" style="width: 0%;">0%</div>
+            </div>
+
+            <!-- Telemetry Stats Cards Grid -->
+            <div class="row g-2 mb-4 text-center">
+                <div class="col">
+                    <div class="p-2.5 bg-light rounded-3 border">
+                        <span class="text-muted fs-7 d-block">Epoch</span>
+                        <div class="fw-bold text-dark fs-6" id="stat-epoch">0 / 0</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="p-2.5 bg-light rounded-3 border">
+                        <span class="text-muted fs-7 d-block">Train Accuracy</span>
+                        <div class="fw-bold text-success fs-6" id="stat-acc">0.00%</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="p-2.5 bg-light rounded-3 border">
+                        <span class="text-muted fs-7 d-block">Train Loss</span>
+                        <div class="fw-bold text-danger fs-6" id="stat-loss">0.0000</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="p-2.5 bg-light rounded-3 border">
+                        <span class="text-muted fs-7 d-block">Val Accuracy</span>
+                        <div class="fw-bold text-info fs-6" id="stat-val-acc">0.00%</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="p-2.5 bg-light rounded-3 border">
+                        <span class="text-muted fs-7 d-block">Remaining Time</span>
+                        <div class="fw-bold text-warning fs-6" id="stat-eta">0s</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2D Chart Canvas -->
+            <div style="height: 320px;">
+                <canvas id="trainingChart"></canvas>
+            </div>
+
+            <div class="mt-4 text-end">
+                <a href="{{ url_for('model.report_page') }}" id="btn-view-report" class="btn btn-primary d-none">
+                    <i class="bi bi-file-earmark-bar-graph me-2"></i> View Evaluation Report
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/train_progress.js') }}"></script>
+<script>
+document.getElementById('train-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const datasetElem = document.getElementById('dataset_id');
+    const epochsElem = document.getElementById('epochs');
+
+    if (!datasetElem || !datasetElem.value) {
+        NIDS.showToast("Validation Error", "Please select a dataset from the Datasets section first.", "warning");
+        return;
+    }
+
+    const datasetId = datasetElem.value;
+    const epochs = epochsElem.value;
+    const btn = document.getElementById('btn-start-train');
+    
+    btn.disabled = true;
+    btn.innerHTML = `<i class="bi bi-arrow-repeat spin me-2"></i> Preprocessing & Training...`;
+
+    try {
+        const response = await NIDS.apiFetch('/api/train', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                dataset_id: parseInt(datasetId),
+                epochs: parseInt(epochs) 
+            })
+        });
+
+        const data = await response.json();
+        if (response.status === 202 || response.ok) {
+            NIDS.showToast("Initiated", "Preprocessing completed! Training started.", "success");
+            
+            if (data.preprocessing_summary) {
+                const s = data.preprocessing_summary;
+                document.getElementById('preproc-summary').innerHTML = `
+                    <div class="text-dark">
+                        <div><strong>Original Rows:</strong> ${s.original_rows}</div>
+                        <div><strong>Duplicates Removed:</strong> ${s.duplicates_removed}</div>
+                        <div><strong>Missing Fixed:</strong> ${s.missing_values_handled}</div>
+                        <div><strong>Features Created:</strong> ${s.total_features}</div>
+                        <div><strong>Classes:</strong> ${s.num_classes} (${s.classes.join(', ')})</div>
+                        <div><strong>Scaler & Encoder:</strong> Saved (.pkl)</div>
+                        <div class="mt-1 text-success fw-semibold"><i class="bi bi-check-circle me-1"></i> ${s.status}</div>
+                    </div>
+                `;
+            }
+
+            pollTrainingStatus();
+        } else {
+            NIDS.showToast("Error", data.error || "Failed to start training", "danger");
+            btn.disabled = false;
+            btn.innerHTML = `<i class="bi bi-play-circle me-2"></i> Start Training Model`;
+        }
+    } catch (err) {
+        NIDS.showToast("Error", "Server connection error", "danger");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-play-circle me-2"></i> Start Training Model`;
+    }
+});
+</script>
+{% endblock %}

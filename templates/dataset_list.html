@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Datasets Inventory — Zero Trust Platform{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">Datasets Management</h2>
+        <p class="text-secondary fs-6 mb-0">Add, select, compare, and remove intrusion detection CSV benchmarks</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#modalAddDataset">
+            <i class="bi bi-plus-circle me-1"></i> Add New Dataset
+        </button>
+        <a href="{{ url_for('dataset.upload_page') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-cloud-upload me-1"></i> Full Upload Page
+        </a>
+    </div>
+</div>
+
+<div class="card-enterprise">
+    <div class="table-responsive">
+        <table class="table table-enterprise">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Dataset File</th>
+                    <th>Schema Type</th>
+                    <th>Upload Date</th>
+                    <th>Rows</th>
+                    <th>Cols</th>
+                    <th>Size</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ds in datasets %}
+                <tr>
+                    <td>
+                        {% if ds.is_selected %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-check-circle-fill"></i> Active Selected</span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">Available</span>
+                        {% endif %}
+                    </td>
+                    <td class="fw-semibold text-dark">{{ ds.filename }}</td>
+                    <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">{{ ds.dataset_type }}</span></td>
+                    <td class="text-secondary fs-7">{{ ds.upload_date }}</td>
+                    <td class="fw-semibold text-dark">{{ "{:,}".format(ds.row_count) }}</td>
+                    <td class="text-secondary fs-7">{{ ds.col_count }}</td>
+                    <td class="text-secondary fs-7">{{ ds.file_size_mb }} MB</td>
+                    <td class="text-end">
+                        {% if not ds.is_selected %}
+                        <button onclick="selectDataset({{ ds.id }})" class="btn btn-outline-success btn-sm me-1" title="Select as Active Dataset">
+                            <i class="bi bi-check-lg me-1"></i> Select Active
+                        </button>
+                        {% endif %}
+                        <a href="{{ url_for('dataset.dataset_compare_page') }}" class="btn btn-outline-secondary btn-sm me-1" title="Compare Stats">
+                            <i class="bi bi-bar-chart-steps"></i>
+                        </a>
+                        <button onclick="deleteDataset({{ ds.id }}, '{{ ds.filename }}')" class="btn btn-outline-danger btn-sm" title="Remove Dataset">
+                            <i class="bi bi-trash"></i> Remove
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-5">
+                        <i class="bi bi-folder2-open fs-1 text-muted d-block mb-2"></i>
+                        No datasets registered in inventory yet. Click "Add New Dataset" above.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Dataset Modal -->
+<div class="modal fade" id="modalAddDataset" tabindex="-1" aria-labelledby="modalAddDatasetLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-3 border-0 shadow-lg">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="modalAddDatasetLabel">
+                    <i class="bi bi-cloud-arrow-up text-primary me-2"></i> Add New Dataset
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="modal-upload-form">
+                    <div class="mb-3">
+                        <label class="form-label text-dark font-medium fs-7 mb-1">Dataset Schema Preset</label>
+                        <select id="modal_dataset_type" class="form-select form-control-enterprise">
+                            <option value="NSL-KDD">NSL-KDD Standard Benchmark Schema</option>
+                            <option value="UNSW-NB15">UNSW-NB15 Network Traffic Schema</option>
+                            <option value="CICIDS2017">CICIDS2017 Intrusion Evaluation Schema</option>
+                            <option value="Custom" selected>Custom CSV (Auto-Detected Headers)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-dark font-medium fs-7 mb-1">Select CSV File</label>
+                        <input type="file" id="modal_dataset_file" accept=".csv" class="form-control form-control-enterprise" required>
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-sm px-3">
+                            <i class="bi bi-upload me-1"></i> Upload Dataset
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function selectDataset(datasetId) {
+    try {
+        const response = await NIDS.apiFetch("/api/dataset/select", {
+            method: "POST",
+            body: JSON.stringify({ id: datasetId })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            NIDS.showToast("Selected", data.message, "success");
+            setTimeout(() => { window.location.reload(); }, 600);
+        } else {
+            NIDS.showToast("Error", data.error || "Failed to select dataset", "danger");
+        }
+    } catch (e) {
+        NIDS.showToast("Error", "Server connection failed", "danger");
+    }
+}
+
+async function deleteDataset(datasetId, filename) {
+    if (!confirm(`Are you sure you want to delete dataset '${filename}'?\nThis action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const response = await NIDS.apiFetch(`/api/dataset/delete/${datasetId}`, {
+            method: "DELETE"
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            NIDS.showToast("Deleted", data.message, "success");
+            setTimeout(() => { window.location.reload(); }, 600);
+        } else {
+            NIDS.showToast("Permission Denied", data.error || "Admin privilege required to delete dataset.", "danger");
+        }
+    } catch (e) {
+        NIDS.showToast("Error", "Failed to connect to server.", "danger");
+    }
+}
+
+document.getElementById("modal-upload-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById("modal_dataset_file");
+    const datasetType = document.getElementById("modal_dataset_type").value;
+
+    if (!fileInput.files.length) {
+        NIDS.showToast("Validation Error", "Please select a CSV file.", "warning");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+    formData.append("dataset_type", datasetType);
+
+    try {
+        const response = await NIDS.apiFetch("/api/dataset/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            NIDS.showToast("Success", "Dataset registered successfully!", "success");
+            setTimeout(() => { window.location.reload(); }, 600);
+        } else {
+            NIDS.showToast("Upload Failed", data.error || "Failed to upload dataset.", "danger");
+        }
+    } catch (err) {
+        NIDS.showToast("Network Error", "Server connection failed.", "danger");
+    }
+});
+</script>
+{% endblock %}

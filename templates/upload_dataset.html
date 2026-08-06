@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Dataset — Zero Trust Platform{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">Dataset Ingestion Module</h2>
+        <p class="text-secondary fs-6 mb-0">Upload network traffic CSV files or map benchmark dataset schemas</p>
+    </div>
+    <a href="{{ url_for('dataset.dataset_list_page') }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-list-ul me-1"></i> Datasets Inventory
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-8">
+        <div class="card-enterprise">
+            <div class="card-enterprise-header">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-cloud-arrow-up text-primary me-2"></i> CSV Dataset Ingestion</h5>
+            </div>
+
+            <form id="upload-form">
+                <div class="mb-4">
+                    <label class="form-label text-dark font-medium fs-7 mb-1">Dataset Schema Preset</label>
+                    <select id="dataset_type" class="form-select form-control-enterprise">
+                        <option value="NSL-KDD">NSL-KDD Standard Benchmark Schema</option>
+                        <option value="UNSW-NB15">UNSW-NB15 Network Traffic Schema</option>
+                        <option value="CICIDS2017">CICIDS2017 Intrusion Evaluation Schema</option>
+                        <option value="Custom" selected>Custom CSV (Auto-Detected Headers)</option>
+                    </select>
+                    <span class="text-secondary fs-7">Select preset schema mapping or auto-detect headers.</span>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-dark font-medium fs-7 mb-1">CSV File</label>
+                    <div class="p-5 border-2 border-dashed border-secondary-subtle rounded-3 text-center bg-light" id="drop-zone">
+                        <i class="bi bi-file-earmark-csv fs-1 text-primary mb-2 d-block"></i>
+                        <h6 class="fw-semibold text-dark mb-1">Drag and drop CSV file here or browse</h6>
+                        <p class="text-secondary fs-7 mb-3">Supported formats: .csv files (Up to 500 MB)</p>
+                        <input type="file" id="dataset_file" accept=".csv" class="form-control form-control-enterprise d-inline-block w-auto" required>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" class="btn btn-enterprise-primary w-100 py-2.5">
+                        <i class="bi bi-upload me-2"></i> Upload & Register Dataset
+                    </button>
+                </div>
+            </form>
+
+            <div class="mt-4 p-3 bg-light rounded-3 border text-secondary fs-7">
+                <i class="bi bi-shield-check text-primary me-1"></i> <strong>Zero Trust Compliance Note:</strong>
+                All uploaded CSV files are validated for structure, logged in the audit database, and stored under <code>datasets/raw/</code>.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById("upload-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById("dataset_file");
+    const datasetType = document.getElementById("dataset_type").value;
+
+    if (!fileInput.files.length) {
+        NIDS.showToast("Validation Error", "Please select a CSV file to upload.", "warning");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+    formData.append("dataset_type", datasetType);
+
+    try {
+        const response = await NIDS.apiFetch("/api/dataset/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            NIDS.showToast("Success", "Dataset registered successfully!", "success");
+            setTimeout(() => { window.location.href = "/dataset-list"; }, 800);
+        } else {
+            NIDS.showToast("Upload Failed", data.error || "Failed to upload dataset.", "danger");
+        }
+    } catch (err) {
+        NIDS.showToast("Network Error", "Server connection failed.", "danger");
+    }
+});
+</script>
+{% endblock %}

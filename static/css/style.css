@@ -1,0 +1,219 @@
+/* Enterprise Full-Width Top Navigation Theme - Zero Trust NIDS (Optimized) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary: #2563EB;          /* Royal Blue */
+    --primary-hover: #1D4ED8;
+    --bg-main: #F6F8FC;          /* Slate Light Gray */
+    --bg-card: #FFFFFF;          /* Pure White */
+    --text-primary: #111827;     /* Dark Charcoal */
+    --text-secondary: #6B7280;   /* Muted Slate */
+    --border-color: #E5E7EB;     /* Border Light Gray */
+    
+    --success: #16A34A;
+    --warning: #F59E0B;
+    --danger: #DC2626;
+
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --radius-card: 12px;
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* Global Reset & Performance Baseline */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* Max-Width 1600px Centered Container */
+.main-container-1600 {
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 1.5rem 1.5rem 3.5rem;
+}
+
+/* Sticky Top Enterprise Navbar */
+.navbar-top-enterprise {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    padding: 0.65rem 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    contain: layout style;
+}
+
+.nav-brand-enterprise {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+/* Active Blue Underline Navigation Link */
+.nav-link-blue-underline {
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.925rem;
+    text-decoration: none;
+    padding: 0.75rem 0.85rem;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.12s ease;
+}
+
+.nav-link-blue-underline:hover {
+    color: var(--primary);
+}
+
+.nav-link-blue-underline::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 3px;
+    bottom: 0;
+    left: 50%;
+    background-color: var(--primary);
+    border-radius: 3px 3px 0 0;
+    transition: width 0.15s ease, left 0.15s ease;
+}
+
+.nav-link-blue-underline:hover::after,
+.nav-link-blue-underline.active::after {
+    width: 80%;
+    left: 10%;
+}
+
+
+.nav-link-blue-underline.active {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Hardware-Accelerated 12px Rounded Cards */
+.card-enterprise {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-sm);
+    padding: 1.25rem 1.5rem;
+    transform: translateZ(0);
+    will-change: transform, box-shadow;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    contain: content;
+}
+
+.card-enterprise:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-enterprise-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Performance Optimized Table Container */
+.table-responsive {
+    contain: layout style paint;
+}
+
+.table-enterprise {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-enterprise th {
+    background-color: #F8FAFC;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.table-enterprise td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.table-enterprise tbody tr:hover {
+    background-color: #F8FAFC;
+}
+
+/* Buttons */
+.btn-enterprise-primary {
+    background-color: var(--primary);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    padding: 0.55rem 1.25rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: background-color 0.12s ease;
+}
+
+.btn-enterprise-primary:hover {
+    background-color: var(--primary-hover);
+    color: #FFFFFF;
+}
+
+.btn-enterprise-outline {
+    background-color: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.55rem 1.25rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.btn-enterprise-outline:hover {
+    background-color: #F1F5F9;
+    color: var(--text-primary);
+    border-color: #CBD5E1;
+}
+
+/* Form Controls */
+.form-control-enterprise {
+    background-color: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    transition: border-color 0.12s ease;
+}
+
+.form-control-enterprise:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    outline: none;
+}

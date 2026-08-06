@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — Zero Trust Enterprise Portal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-75 my-4">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+        <div class="card-enterprise p-4 p-sm-5">
+            <!-- Portal Selection Switcher Tabs (User vs Admin) -->
+            <ul class="nav nav-pills nav-justified mb-4 p-1 bg-light rounded-3 border" id="portalTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active py-2 fs-7 font-medium" id="user-tab" data-bs-toggle="pill" data-bs-target="#pills-user" type="button" role="tab" onclick="setLoginPortal('User')">
+                        <i class="bi bi-person me-1"></i> User Portal
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link py-2 fs-7 font-medium text-danger" id="admin-tab" data-bs-toggle="pill" data-bs-target="#pills-admin" type="button" role="tab" onclick="setLoginPortal('Admin')">
+                        <i class="bi bi-shield-lock me-1"></i> Admin Portal
+                    </button>
+                </li>
+            </ul>
+
+            <div class="text-center mb-4">
+                <div id="portal-icon-container" class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary p-3 rounded-circle mb-3">
+                    <i id="portal-icon" class="bi bi-person-badge-fill fs-2"></i>
+                </div>
+                <h3 id="portal-title" class="fw-bold mb-1">User Sign In</h3>
+                <p id="portal-subtitle" class="text-secondary fs-7 mb-0">Authenticate session for standard monitoring & analysis</p>
+            </div>
+
+            <form id="login-form">
+                <input type="hidden" id="selected_portal" value="User">
+
+                <div class="mb-3">
+                    <label class="form-label text-dark font-medium fs-7 mb-1">Username</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
+                        <input type="text" id="username" class="form-control form-control-enterprise border-start-0" placeholder="Enter username" required>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label text-dark font-medium fs-7 mb-0">Password</label>
+                        <a href="{{ url_for('auth.forgot_password_page') }}" class="text-primary text-decoration-none fs-7 font-medium">Forgot Password?</a>
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
+                        <input type="password" id="password" class="form-control form-control-enterprise border-start-0" placeholder="Enter password" required>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-submit-login" class="btn btn-enterprise-primary w-100 py-2.5">
+                    <i class="bi bi-box-arrow-in-right me-2"></i> Authenticate Session
+                </button>
+            </form>
+
+            <div class="mt-4 pt-3 text-center border-top">
+                <span class="text-secondary fs-7">Don't have an enterprise account?</span>
+                <a href="{{ url_for('auth.register_page') }}" class="text-primary text-decoration-none fw-semibold fs-7 ms-1">Register User</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setLoginPortal(portal) {
+    document.getElementById('selected_portal').value = portal;
+    const title = document.getElementById('portal-title');
+    const subtitle = document.getElementById('portal-subtitle');
+    const iconContainer = document.getElementById('portal-icon-container');
+    const icon = document.getElementById('portal-icon');
+    const submitBtn = document.getElementById('btn-submit-login');
+
+    if (portal === 'Admin') {
+        title.textContent = 'Admin Portal';
+        subtitle.textContent = 'Elevated Administrator Access — System Control & Deletion Privileges';
+        iconContainer.className = 'd-inline-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger p-3 rounded-circle mb-3';
+        icon.className = 'bi bi-shield-lock-fill fs-2';
+        submitBtn.className = 'btn btn-danger w-100 py-2.5';
+    } else {
+        title.textContent = 'User Sign In';
+        subtitle.textContent = 'Authenticate session for standard monitoring & analysis';
+        iconContainer.className = 'd-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary p-3 rounded-circle mb-3';
+        icon.className = 'bi bi-person-badge-fill fs-2';
+        submitBtn.className = 'btn btn-enterprise-primary w-100 py-2.5';
+    }
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            NIDS.setAuth(data.token, data.user);
+            NIDS.showToast("Authenticated", `Welcome ${data.user.username} (${data.user.role})`, "success");
+            setTimeout(() => { window.location.href = "/"; }, 600);
+        } else {
+            NIDS.showToast("Authentication Error", data.error || "Invalid username or password", "danger");
+        }
+    } catch (err) {
+        NIDS.showToast("Network Error", "Server connection failed", "danger");
+    }
+});
+</script>
+{% endblock %}
