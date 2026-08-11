@@ -3,7 +3,7 @@ import { apiLogin } from '../services/api';
 
 const AuthContext = createContext(null);
 
-// Default real benchmark datasets (shared globally across all views)
+// Default real benchmark datasets
 const DEFAULT_DATASETS = [
   { id: 1, name: 'nsl_kdd_intrusion_dataset.csv', type: 'NSL-KDD', rows: 5000, cols: 42, size: '0.62 MB', status: 'Uploaded', date: '2026-08-10 14:20', isSelected: true },
   { id: 2, name: 'unsw_nb15_network_flow_dataset.csv', type: 'UNSW-NB15', rows: 5000, cols: 43, size: '0.78 MB', status: 'Uploaded', date: '2026-08-10 12:15', isSelected: false }
@@ -23,13 +23,30 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('nids_token'));
   const [loading, setLoading] = useState(false);
 
-  // ── Global Dataset Collection (shared across DatasetsView, TrainingView, OverviewView) ──
-  const [datasets, setDatasets] = useState(DEFAULT_DATASETS);
+  // ── Global Dataset Collection (Persisted in localStorage across sessions/logouts) ──
+  const [datasets, setDatasets] = useState(() => {
+    const savedDs = localStorage.getItem('nids_datasets');
+    if (savedDs) {
+      try {
+        const parsed = JSON.parse(savedDs);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (err) {
+        console.warn('Could not parse saved datasets, using defaults:', err);
+      }
+    }
+    return DEFAULT_DATASETS;
+  });
 
   const activeDataset = datasets.find(d => d.isSelected) || datasets[0];
 
   const selectDataset = (id) => {
-    setDatasets(prev => prev.map(d => ({ ...d, isSelected: d.id === id })));
+    setDatasets(prev => {
+      const updated = prev.map(d => ({ ...d, isSelected: d.id === id }));
+      localStorage.setItem('nids_datasets', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const addDataset = (ds, autoSelect = true) => {
@@ -37,19 +54,22 @@ export const AuthProvider = ({ children }) => {
       const updated = autoSelect 
         ? prev.map(d => ({ ...d, isSelected: false }))
         : prev;
-      return [{ ...ds, isSelected: autoSelect }, ...updated];
+      const newList = [{ ...ds, isSelected: autoSelect }, ...updated];
+      localStorage.setItem('nids_datasets', JSON.stringify(newList));
+      return newList;
     });
   };
 
   const removeDataset = (id) => {
     setDatasets(prev => {
       const filtered = prev.filter(d => d.id !== id);
-      // If the deleted one was selected, auto-select first remaining
       const anySelected = filtered.some(d => d.isSelected);
+      let updatedList = filtered;
       if (!anySelected && filtered.length > 0) {
-        return filtered.map((d, i) => ({ ...d, isSelected: i === 0 }));
+        updatedList = filtered.map((d, i) => ({ ...d, isSelected: i === 0 }));
       }
-      return filtered;
+      localStorage.setItem('nids_datasets', JSON.stringify(updatedList));
+      return updatedList;
     });
   };
 
@@ -104,9 +124,8 @@ export const AuthProvider = ({ children }) => {
       setUser(userObj);
       setIsAuthenticated(true);
 
-      // Reset model status AND dataset collection to defaults on every new login
+      // Reset model status to Untrained, but PERSIST saved dataset selection!
       resetModelStatus();
-      setDatasets(DEFAULT_DATASETS);
 
       localStorage.setItem('nids_user', JSON.stringify(userObj));
       if (data && data.token) {
@@ -127,8 +146,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('nids_token');
     localStorage.removeItem('nids_user');
     setIsAuthenticated(false);
+    
+    // Reset model status to Untrained, but PERSIST saved dataset selection!
     resetModelStatus();
-    setDatasets(DEFAULT_DATASETS);
     setUser({ username: 'admin', role: 'Admin', email: 'admin@jnnce.ac.in' });
   };
 
@@ -143,7 +163,7 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       user, role: currentRole, isAuthenticated, loading, login, logout, switchRole,
-      // Dataset collection (global shared state)
+      // Dataset collection (persisted across logouts)
       datasets, activeDataset, selectDataset, addDataset, removeDataset,
       // Model training session state
       modelStatus, setModelStatus, modelMetrics, setTrainedModel, resetModelStatus
