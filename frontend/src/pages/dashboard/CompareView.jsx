@@ -17,7 +17,7 @@ export const CompareView = () => {
             METRIC COMPARISON
           </span>
           <h1 className="text-xl font-bold text-[#172033] dark:text-[#F3F4F1] mt-1">Dataset Comparison Matrix</h1>
-          <p className="text-xs text-[#475569] dark:text-[#9FA6A8]">Compare row counts, missing cells, duplicate records, and preprocessing purposes across benchmark datasets.</p>
+          <p className="text-xs text-[#475569] dark:text-[#9FA6A8]">Compare row counts, missing cells, and duplicate records across benchmark datasets.</p>
         </div>
 
         {/* Dataset Selection Toggles from Inventory */}
@@ -104,14 +104,9 @@ export const CompareView = () => {
                     </span>
                   </div>
 
-                  <div className="flex justify-between py-1 border-b border-slate-50 dark:border-[#252A2E]/50">
+                  <div className="flex justify-between py-1">
                     <span>Numerical / Categorical:</span>
                     <span className="text-[#172033] dark:text-[#F3F4F1]">{numFeatures} Num / {catFeatures} Cat</span>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] space-y-1 mt-2">
-                    <span className="text-[10px] text-[#475569] dark:text-[#9FA6A8] block uppercase tracking-wider">Preprocessing Purpose:</span>
-                    <span className="text-xs font-bold text-[#172033] dark:text-[#F3F4F1] block">{purposeText}</span>
                   </div>
 
                 </div>
