@@ -26,7 +26,9 @@ export const TrainingView = ({ onNavigate }) => {
   const [valLoss, setValLoss] = useState('0.0000');
   const [remainingTime, setRemainingTime] = useState('0s');
 
-  // Epoch History array for plotting the 4 series (Train Acc, Val Acc, Train Loss, Val Loss)
+  const [hoveredEpoch, setHoveredEpoch] = useState(null);
+
+  // Epoch History array for plotting the 4 line series
   const [epochHistory, setEpochHistory] = useState(() => {
     if (modelStatus === 'Trained') {
       return Array.from({ length: 10 }, (_, i) => {
@@ -163,7 +165,7 @@ export const TrainingView = ({ onNavigate }) => {
           return;
         }
       } catch (pollErr) {
-        // Dynamic Fallback Polling Loop if Backend is Starting Up
+        // Dynamic Fallback Polling Loop
         simulatedEp++;
         const p = Math.min(100, Math.round((simulatedEp / epochs) * 100));
         const ratio = simulatedEp / epochs;
@@ -211,7 +213,30 @@ export const TrainingView = ({ onNavigate }) => {
     }, 450);
   };
 
-  const epochList = Array.from({ length: Math.min(30, Math.max(1, epochs)) }, (_, i) => i + 1);
+  // SVG Line Graph Coordinate Generator
+  const totalEpochCount = Math.max(1, epochs);
+
+  const getX = (ep) => {
+    if (totalEpochCount <= 1) return 250;
+    return 40 + ((ep - 1) / (totalEpochCount - 1)) * 420;
+  };
+
+  // Y for Accuracy (0% -> 100% maps to Y: 170 -> 20)
+  const getYAcc = (val) => {
+    const clamped = Math.min(100, Math.max(0, val));
+    return 170 - (clamped / 100) * 150;
+  };
+
+  // Y for Loss (0.0 -> 1.0 maps to Y: 170 -> 20)
+  const getYLoss = (val) => {
+    const clamped = Math.min(1.0, Math.max(0, val));
+    return 170 - (clamped / 1.0) * 150;
+  };
+
+  const trainAccPoints = epochHistory.map(h => `${getX(h.epoch)},${getYAcc(h.trainAcc)}`).join(' ');
+  const valAccPoints = epochHistory.map(h => `${getX(h.epoch)},${getYAcc(h.valAcc)}`).join(' ');
+  const trainLossPoints = epochHistory.map(h => `${getX(h.epoch)},${getYLoss(h.trainLoss)}`).join(' ');
+  const valLossPoints = epochHistory.map(h => `${getX(h.epoch)},${getYLoss(h.valLoss)}`).join(' ');
 
   return (
     <div className="space-y-6">
@@ -375,13 +400,13 @@ export const TrainingView = ({ onNavigate }) => {
           </form>
         </div>
 
-        {/* Right Column: Real-Time Training Progress & Graph */}
+        {/* Right Column: Real-Time Training Progress & SVG Line Graph */}
         <div className="lg:col-span-7 bg-white dark:bg-[#15191C] border border-[#E2E8F0] dark:border-[#252A2E] rounded-2xl p-6 shadow-sm space-y-6">
           
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#252A2E] pb-3">
             <div className="flex items-center space-x-2">
               <Activity className="h-4 w-4 text-[#1769E0]" />
-              <h2 className="text-sm font-bold text-[#172033] dark:text-[#F3F4F1]">Real-Time Training Progress & Curves</h2>
+              <h2 className="text-sm font-bold text-[#172033] dark:text-[#F3F4F1]">Real-Time Training Progress & Line Curves</h2>
             </div>
 
             <span className={`text-[11px] font-mono px-2.5 py-0.5 rounded-full border ${
@@ -430,111 +455,178 @@ export const TrainingView = ({ onNavigate }) => {
 
           </div>
 
-          {/* 4-Series Chart Legend */}
+          {/* 4-Series Chart Line Legend */}
           <div className="flex flex-wrap items-center justify-center gap-5 text-xs font-mono pt-1">
             <div className="flex items-center space-x-1.5">
-              <span className="h-3 w-3 bg-emerald-500 rounded-xs" />
-              <span className="text-[#475569] dark:text-[#9FA6A8]">Train Acc (Bar)</span>
+              <span className="h-2 w-4 bg-emerald-500 rounded-full inline-block" />
+              <span className="text-[#475569] dark:text-[#9FA6A8]">Train Acc (Solid Green Line)</span>
             </div>
 
             <div className="flex items-center space-x-1.5">
-              <span className="h-3 w-3 bg-blue-500 rounded-xs" />
-              <span className="text-[#475569] dark:text-[#9FA6A8]">Val Acc (Bar)</span>
+              <span className="h-2 w-4 bg-[#1769E0] rounded-full inline-block" />
+              <span className="text-[#475569] dark:text-[#9FA6A8]">Val Acc (Solid Blue Line)</span>
             </div>
 
             <div className="flex items-center space-x-1.5">
-              <span className="h-2 w-4 bg-red-500 rounded-full inline-block" />
-              <span className="text-[#475569] dark:text-[#9FA6A8]">Train Loss (Line)</span>
+              <span className="h-0.5 w-4 bg-red-500 inline-block border-b border-dashed border-red-500" />
+              <span className="text-[#475569] dark:text-[#9FA6A8]">Train Loss (Dashed Red Line)</span>
             </div>
 
             <div className="flex items-center space-x-1.5">
-              <span className="h-2 w-4 bg-amber-500 rounded-full inline-block" />
-              <span className="text-[#475569] dark:text-[#9FA6A8]">Val Loss (Line)</span>
+              <span className="h-0.5 w-4 bg-amber-500 inline-block border-b border-dotted border-amber-500" />
+              <span className="text-[#475569] dark:text-[#9FA6A8]">Val Loss (Dotted Amber Line)</span>
             </div>
           </div>
 
-          {/* 📊 REAL-TIME 4-SERIES EPOCH GRAPH PLOTTER (Train Acc, Val Acc, Train Loss, Val Loss) */}
+          {/* 📈 REAL-TIME 4-SERIES SVG LINE GRAPH PLOTTER */}
           <div className="h-64 bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] rounded-xl p-4 flex flex-col justify-between font-mono text-[10px] relative overflow-hidden">
             
-            {/* Axis Labels */}
-            <div className="flex justify-between items-center text-[9px] text-[#475569] dark:text-[#9FA6A8] pb-1 border-b border-[#CBD5E1] dark:border-[#252A2E]">
+            {/* Axis Header */}
+            <div className="flex justify-between items-center text-[9px] text-[#475569] dark:text-[#9FA6A8] pb-1 border-b border-[#CBD5E1] dark:border-[#252A2E] z-10">
               <span>Left Axis: Accuracy (0% ➔ 100%)</span>
               <span>Right Axis: Categorical Loss (0.0 ➔ 1.0)</span>
             </div>
 
-            {/* Main Graph Content */}
-            <div className="flex-1 flex items-end justify-between px-2 pt-2 pb-1 relative">
+            {/* Main SVG Line Canvas Container */}
+            <div className="flex-1 w-full h-full relative pt-2">
               
-              {/* Plot Columns for each Epoch */}
-              {epochList.map((ep) => {
-                const item = epochHistory.find(h => h.epoch === ep);
-                const isReached = item !== undefined;
+              {/* Background Grid Lines */}
+              <div className="absolute inset-0 top-2 bottom-6 flex flex-col justify-between pointer-events-none opacity-20">
+                <div className="border-b border-slate-400 w-full" />
+                <div className="border-b border-slate-400 w-full" />
+                <div className="border-b border-slate-400 w-full" />
+                <div className="border-b border-slate-400 w-full" />
+              </div>
 
-                const trAccHeight = isReached ? Math.min(100, Math.max(10, item.trainAcc)) : 0;
-                const vAccHeight = isReached ? Math.min(100, Math.max(10, item.valAcc)) : 0;
-                
-                // Scale Loss to percentage height (0.0 -> 1.0 equals 0% -> 100% height)
-                const trLossHeight = isReached ? Math.min(100, Math.max(5, (item.trainLoss || 0) * 100)) : 0;
-                const vLossHeight = isReached ? Math.min(100, Math.max(5, (item.valLoss || 0) * 100)) : 0;
+              {/* Y-Axis Labels Overlay */}
+              <div className="absolute left-0 top-2 bottom-6 flex flex-col justify-between text-[8px] text-slate-400 pointer-events-none z-10">
+                <span>100% | 1.0</span>
+                <span>75% | 0.75</span>
+                <span>50% | 0.50</span>
+                <span>25% | 0.25</span>
+                <span>0% | 0.0</span>
+              </div>
 
-                return (
-                  <div key={ep} className="flex flex-col items-center flex-1 px-1 h-full justify-end group relative">
-                    
-                    {/* Tooltip Hover Box */}
-                    {isReached && (
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-12 z-30 bg-slate-900 text-white text-[9px] font-mono p-1.5 rounded shadow-lg pointer-events-none whitespace-nowrap space-y-0.5">
-                        <div className="font-bold text-blue-400">Epoch {ep} Metrics</div>
-                        <div className="text-emerald-400">Train Acc: {item.trainAcc.toFixed(2)}%</div>
-                        <div className="text-blue-300">Val Acc: {item.valAcc.toFixed(2)}%</div>
-                        <div className="text-red-300">Train Loss: {item.trainLoss.toFixed(4)}</div>
-                        <div className="text-amber-300">Val Loss: {item.valLoss.toFixed(4)}</div>
-                      </div>
-                    )}
-
-                    {/* Bars & Line Points Container */}
-                    <div className="w-full max-w-[32px] h-36 relative flex items-end justify-center space-x-0.5">
-                      
-                      {/* 1. Train Acc Bar (Green) */}
-                      <div className="w-2.5 bg-emerald-500 rounded-t transition-all duration-500" style={{ height: `${trAccHeight}%` }} />
-
-                      {/* 2. Val Acc Bar (Blue) */}
-                      <div className="w-2.5 bg-[#1769E0] rounded-t transition-all duration-500" style={{ height: `${vAccHeight}%` }} />
-
-                      {/* 3. Train Loss Indicator Dot (Red) */}
-                      {isReached && (
-                        <div
-                          className="absolute w-2 h-2 rounded-full bg-red-500 border border-white dark:border-slate-900 z-20 transition-all duration-500 left-1/3 -translate-x-1/2"
-                          style={{ bottom: `${trLossHeight}%` }}
-                          title={`Train Loss: ${item.trainLoss.toFixed(4)}`}
-                        />
-                      )}
-
-                      {/* 4. Val Loss Indicator Dot (Amber) */}
-                      {isReached && (
-                        <div
-                          className="absolute w-2 h-2 rounded-full bg-amber-500 border border-white dark:border-slate-900 z-20 transition-all duration-500 right-1/3 translate-x-1/2"
-                          style={{ bottom: `${vLossHeight}%` }}
-                          title={`Val Loss: ${item.valLoss.toFixed(4)}`}
-                        />
-                      )}
-
-                    </div>
-
-                    {/* Epoch Number Label */}
-                    <span className={`text-[9px] font-mono mt-1 ${isReached ? 'text-[#1769E0] dark:text-blue-400 font-bold' : 'text-slate-400'}`}>
-                      E{ep}
-                    </span>
-
+              {/* Interactive Hover Tooltip Popup */}
+              {hoveredEpoch && (
+                <div className="absolute top-2 right-2 z-30 bg-slate-900/90 dark:bg-black/90 text-white text-[9px] font-mono p-2 rounded-xl shadow-xl backdrop-blur-xs space-y-1 border border-slate-700">
+                  <div className="font-bold text-blue-400 border-b border-slate-700 pb-0.5">Epoch {hoveredEpoch.epoch} Metrics</div>
+                  <div className="flex items-center space-x-2 text-emerald-400">
+                    <span>Train Accuracy:</span>
+                    <span className="font-bold">{hoveredEpoch.trainAcc.toFixed(2)}%</span>
                   </div>
-                );
-              })}
+                  <div className="flex items-center space-x-2 text-blue-300">
+                    <span>Val Accuracy:</span>
+                    <span className="font-bold">{hoveredEpoch.valAcc.toFixed(2)}%</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-red-400">
+                    <span>Train Loss:</span>
+                    <span className="font-bold">{hoveredEpoch.trainLoss.toFixed(4)}</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-amber-400">
+                    <span>Val Loss:</span>
+                    <span className="font-bold">{hoveredEpoch.valLoss.toFixed(4)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* SVG 4-Line Plot */}
+              <svg className="w-full h-full overflow-visible" viewBox="0 0 500 180" preserveAspectRatio="none">
+                
+                {/* 1. Train Accuracy Line (Solid Green) */}
+                {trainAccPoints && (
+                  <polyline
+                    fill="none"
+                    stroke="#10B981"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={trainAccPoints}
+                  />
+                )}
+
+                {/* 2. Val Accuracy Line (Solid Blue) */}
+                {valAccPoints && (
+                  <polyline
+                    fill="none"
+                    stroke="#1769E0"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={valAccPoints}
+                  />
+                )}
+
+                {/* 3. Train Loss Line (Dashed Red) */}
+                {trainLossPoints && (
+                  <polyline
+                    fill="none"
+                    stroke="#EF4444"
+                    strokeWidth="2.5"
+                    strokeDasharray="6,4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={trainLossPoints}
+                  />
+                )}
+
+                {/* 4. Val Loss Line (Dotted Amber) */}
+                {valLossPoints && (
+                  <polyline
+                    fill="none"
+                    stroke="#F59E0B"
+                    strokeWidth="2.5"
+                    strokeDasharray="3,3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={valLossPoints}
+                  />
+                )}
+
+                {/* Data Point Circles Plot */}
+                {epochHistory.map((h) => {
+                  const x = getX(h.epoch);
+                  const yTrAcc = getYAcc(h.trainAcc);
+                  const yVAcc = getYAcc(h.valAcc);
+                  const yTrLoss = getYLoss(h.trainLoss);
+                  const yVLoss = getYLoss(h.valLoss);
+
+                  return (
+                    <g key={h.epoch} onMouseEnter={() => setHoveredEpoch(h)} onMouseLeave={() => setHoveredEpoch(null)} className="cursor-pointer">
+                      
+                      {/* Train Acc Dot (Green) */}
+                      <circle cx={x} cy={yTrAcc} r="4" fill="#10B981" stroke="#ffffff" strokeWidth="1.5" />
+
+                      {/* Val Acc Dot (Blue) */}
+                      <circle cx={x} cy={yVAcc} r="4" fill="#1769E0" stroke="#ffffff" strokeWidth="1.5" />
+
+                      {/* Train Loss Dot (Red) */}
+                      <circle cx={x} cy={yTrLoss} r="3.5" fill="#EF4444" stroke="#ffffff" strokeWidth="1.5" />
+
+                      {/* Val Loss Dot (Amber) */}
+                      <circle cx={x} cy={yVLoss} r="3.5" fill="#F59E0B" stroke="#ffffff" strokeWidth="1.5" />
+
+                    </g>
+                  );
+                })}
+
+              </svg>
+
+              {/* X-Axis Epoch Markings */}
+              <div className="absolute bottom-0 left-0 right-0 flex justify-between px-8 text-[9px] font-mono text-slate-400 border-t border-[#CBD5E1] dark:border-[#252A2E] pt-1">
+                {Array.from({ length: totalEpochCount }, (_, i) => i + 1).map(ep => (
+                  <span key={ep} className={`cursor-pointer ${currentEpoch >= ep ? 'text-[#1769E0] font-bold' : ''}`}>
+                    E{ep}
+                  </span>
+                ))}
+              </div>
 
             </div>
 
-            {/* Baseline indicator string */}
+            {/* Empty Baseline Notice */}
             {epochHistory.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-xs font-mono bg-white/60 dark:bg-[#0B0D0F]/60 backdrop-blur-xs">
-                <span>Click 'Preprocess & Train Model' to plot live 4-series epoch curves...</span>
+              <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-xs font-mono bg-white/60 dark:bg-[#0B0D0F]/60 backdrop-blur-xs z-20">
+                <span>Click 'Preprocess & Train Model' to plot live 4-series SVG line graph...</span>
               </div>
             )}
 
