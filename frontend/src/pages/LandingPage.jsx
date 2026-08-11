@@ -107,21 +107,93 @@ export const LandingPage = ({ onExplore, onOpenLogin }) => {
         </div>
       </section>
 
-      {/* 4. DASHBOARD INSIGHT PREVIEW SECTION */}
+      {/* 4. DASHBOARD INSIGHT PREVIEW SECTION (EXACT DASHBOARD ON THE LEFT) */}
       <section id="dashboard-insight" className="py-14 bg-white dark:bg-[#15191C] border-b border-[#E2E8F0] dark:border-[#252A2E]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           
-          <div className="text-center max-w-3xl mx-auto mb-6">
+          <div className="text-center max-w-3xl mx-auto">
             <span className="text-xs font-bold text-[#1769E0] uppercase tracking-wider font-mono">DASHBOARD INSIGHT & PREVIEW</span>
             <h2 className="text-2xl sm:text-3xl font-bold text-[#172033] dark:text-[#F3F4F1] mt-1">
-              LIVE SYSTEM TELEMETRY & CONSOLE INSIGHT
+              REAL-TIME SOC DASHBOARD INSIGHT
             </h2>
             <p className="text-sm text-[#475569] dark:text-[#9FA6A8] mt-2">
-              A real-time snapshot of the Security Operations Center dashboard tracking intrusion metrics, traffic classification, and Zero Trust JWT policy enforcement.
+              An exact preview of the Security Operations Center dashboard matching our system's navy dark theme, top navigation bar, and live telemetry feeds.
             </p>
           </div>
 
-          <IntegratedDashboardPreview onExplore={onOpenLogin} />
+          {/* 2-Column Grid: Dashboard Preview ON THE LEFT */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            
+            {/* LEFT Column: Exact Dashboard Preview */}
+            <div className="lg:col-span-7">
+              <IntegratedDashboardPreview onExplore={onOpenLogin} />
+            </div>
+
+            {/* RIGHT Column: Dashboard Key Highlights & Insights */}
+            <div className="lg:col-span-5 space-y-5">
+              
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono font-bold text-[#1769E0] uppercase tracking-wider bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                  SYSTEM INSIGHT HIGHLIGHTS
+                </span>
+                <h3 className="text-xl font-bold text-[#172033] dark:text-[#F3F4F1]">
+                  Security Console Telemetry & Features
+                </h3>
+              </div>
+
+              <div className="space-y-3 font-mono text-xs">
+                
+                <div className="p-3.5 rounded-xl bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] flex items-start space-x-3">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-[#1769E0] shrink-0">
+                    <Shield className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#172033] dark:text-[#F3F4F1] font-sans text-xs">Top Navigation & Brand Identity</h4>
+                    <p className="text-[11px] text-[#475569] dark:text-[#9FA6A8] mt-0.5 font-mono">
+                      Features JNNCE logo, full project title, Batch No. 34 badge, and horizontal tab navigation bar.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] flex items-start space-x-3">
+                  <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 shrink-0">
+                    <Cpu className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#172033] dark:text-[#F3F4F1] font-sans text-xs">Primary Keras LSTM Neural Network</h4>
+                    <p className="text-[11px] text-[#475569] dark:text-[#9FA6A8] mt-0.5 font-mono">
+                      Real-time training curves tracking accuracy (97.80%) and loss across 10 epochs.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] flex items-start space-x-3">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 shrink-0">
+                    <Lock className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#172033] dark:text-[#F3F4F1] font-sans text-xs">Zero Trust JWT Security Posture</h4>
+                    <p className="text-[11px] text-[#475569] dark:text-[#9FA6A8] mt-0.5 font-mono">
+                      Signed HMAC-SHA256 authentication with role-based access control (Admin, Analyst, User).
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={onOpenLogin}
+                  className="w-full py-3 text-xs font-bold text-white bg-[#1769E0] hover:bg-[#0F3B68] rounded-xl shadow-md transition-all flex items-center justify-center space-x-2"
+                >
+                  <Lock className="h-4 w-4" />
+                  <span>Authenticate to Access Live Dashboard</span>
+                </button>
+              </div>
+
+            </div>
+
+          </div>
 
         </div>
       </section>
