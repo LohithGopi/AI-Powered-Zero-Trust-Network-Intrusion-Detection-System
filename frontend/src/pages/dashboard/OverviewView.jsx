@@ -33,7 +33,7 @@ export const OverviewView = ({ onNavigate }) => {
               Department of Information Science and Engineering
             </p>
             <p className="text-[11px] text-[#475569] dark:text-[#9FA6A8]">
-              AI-Powered Zero Trust Network Intrusion Detection System
+              Zero Trust AI-Powered Network Intrusion Detection System
             </p>
           </div>
         </div>

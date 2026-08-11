@@ -1,4 +1,4 @@
-# AI-Powered Zero Trust Network Intrusion Detection System (Phase 1)
+# Zero Trust AI-Powered Network Intrusion Detection System (Phase 1)
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0+-black.svg)](https://flask.palletsprojects.com/)

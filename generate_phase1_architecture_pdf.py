@@ -81,7 +81,7 @@ def build_phase1_architecture_pdf(output_filename="Zero_Trust_NIDS_Phase1_Archit
     story = []
 
     # Title & Header
-    story.append(Paragraph("AI-Powered Zero Trust Network Intrusion Detection System", title_style))
+    story.append(Paragraph("Zero Trust AI-Powered Network Intrusion Detection System", title_style))
     story.append(Paragraph("Phase 1 Complete System Architecture & Component Design Report", subtitle_style))
     story.append(HRFlowable(width="100%", thickness=1.5, color=BLUE, spaceBefore=0, spaceAfter=10))
 

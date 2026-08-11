@@ -49,7 +49,7 @@ export const LandingPage = ({ onExplore, onOpenLogin }) => {
                 FINAL YEAR B.E. PROJECT TITLE
               </span>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#172033] dark:text-[#F3F4F1] tracking-tight">
-                AI-Powered Zero Trust Network Intrusion Detection System
+                Zero Trust AI-Powered Network Intrusion Detection System
               </h1>
             </div>
           </div>
@@ -419,7 +419,7 @@ export const LandingPage = ({ onExplore, onOpenLogin }) => {
             <span className="font-bold text-[#172033] dark:text-[#F3F4F1]">Jawaharlal Nehru National College of Engineering, Shivamogga</span>
           </div>
           <div>Department of Information Science and Engineering • Project Batch No. 34</div>
-          <div className="text-[10px] text-[#94A3B8]">AI-Powered Zero Trust Network Intrusion Detection System</div>
+          <div className="text-[10px] text-[#94A3B8]">Zero Trust AI-Powered Network Intrusion Detection System</div>
         </div>
       </footer>
 

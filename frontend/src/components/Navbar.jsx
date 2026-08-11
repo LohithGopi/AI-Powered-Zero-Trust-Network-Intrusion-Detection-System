@@ -27,7 +27,7 @@ export const Navbar = ({ onOpenLogin, onExplore }) => {
           <div>
             <div className="flex items-center space-x-2">
               <span className="font-bold text-xs sm:text-sm tracking-tight text-[#172033] dark:text-[#F3F4F1]">
-                AI-Powered Zero Trust NIDS
+                Zero Trust AI-Powered NIDS
               </span>
               <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/40 text-[#1769E0] border border-blue-100 dark:border-blue-800 font-bold hidden sm:inline-block">
                 BATCH 34

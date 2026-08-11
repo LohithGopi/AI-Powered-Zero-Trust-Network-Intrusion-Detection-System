@@ -32,7 +32,7 @@ class NumberedCanvas(canvas.Canvas):
         
         # Header (Skip on Page 1)
         if self._pageNumber > 1:
-            self.drawString(54, 750, "AI-Powered Zero Trust Network Intrusion Detection System")
+            self.drawString(54, 750, "Zero Trust AI-Powered Network Intrusion Detection System")
             self.drawRightString(558, 750, "System Architecture Report")
             self.setStrokeColor(colors.HexColor("#E5E7EB"))
             self.setLineWidth(0.5)
@@ -151,7 +151,7 @@ def create_architecture_pdf(output_filename="Zero_Trust_NIDS_Architecture_Report
     story = []
 
     # Title Banner Block
-    story.append(Paragraph("AI-Powered Zero Trust Network Intrusion Detection System", title_style))
+    story.append(Paragraph("Zero Trust AI-Powered Network Intrusion Detection System", title_style))
     story.append(Paragraph("Comprehensive System Architecture & Technical Specification Report — Phase 1", subtitle_style))
     story.append(HRFlowable(width="100%", thickness=2, color=BLUE, spaceBefore=0, spaceAfter=15))
 

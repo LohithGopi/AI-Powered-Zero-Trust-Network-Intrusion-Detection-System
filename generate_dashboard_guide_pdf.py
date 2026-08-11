@@ -146,7 +146,7 @@ def build_pdf(filename="Zero_Trust_NIDS_Dashboard_Guide.pdf"):
     story.append(Spacer(1, 14))
 
     # TITLE & SUBTITLE
-    story.append(Paragraph("AI-Powered Zero Trust Network Intrusion Detection System", title_style))
+    story.append(Paragraph("Zero Trust AI-Powered Network Intrusion Detection System", title_style))
     story.append(Paragraph("DASHBOARD & USER GUIDE (EXPLAINED IN SIMPLE WORDS)", subtitle_style))
     story.append(Paragraph("Academic Project Phase 1 Implementation • JNNCE Shivamogga", meta_style))
     story.append(HRFlowable(width="100%", thickness=1, color=SECONDARY, spaceBefore=4, spaceAfter=14))

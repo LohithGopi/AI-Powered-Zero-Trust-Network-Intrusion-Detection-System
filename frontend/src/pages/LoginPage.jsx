@@ -54,7 +54,7 @@ export const LoginPage = ({ onBackToLanding, onForgotPassword, onSuccessLogin })
 
         <div className="flex items-center space-x-2">
           <Shield className="h-5 w-5 text-[#1769E0]" />
-          <span className="font-bold text-sm text-[#172033] dark:text-[#F3F4F1]">AI Powered Zero Trust NIDS</span>
+          <span className="font-bold text-sm text-[#172033] dark:text-[#F3F4F1]">Zero Trust AI-Powered NIDS</span>
         </div>
       </div>
 
@@ -157,7 +157,7 @@ export const LoginPage = ({ onBackToLanding, onForgotPassword, onSuccessLogin })
 
       {/* Footer */}
       <div className="text-center text-xs text-[#475569] dark:text-[#9FA6A8] font-mono">
-        © 2026 AI Powered Zero Trust NIDS • Academic Phase 1 Implementation
+        © 2026 Zero Trust AI-Powered NIDS • Academic Phase 1 Implementation
       </div>
 
     </div>

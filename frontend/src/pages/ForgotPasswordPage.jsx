@@ -37,7 +37,7 @@ export const ForgotPasswordPage = ({ onBackToLogin }) => {
 
         <div className="flex items-center space-x-2">
           <Shield className="h-5 w-5 text-[#1769E0]" />
-          <span className="font-bold text-sm text-[#172033]">AI Powered Zero Trust NIDS</span>
+          <span className="font-bold text-sm text-[#172033]">Zero Trust AI-Powered NIDS</span>
         </div>
       </div>
 
@@ -136,7 +136,7 @@ export const ForgotPasswordPage = ({ onBackToLogin }) => {
       </div>
 
       <div className="text-center text-xs text-[#475569] font-mono">
-        © 2026 AI Powered Zero Trust NIDS
+        © 2026 Zero Trust AI-Powered NIDS
       </div>
 
     </div>

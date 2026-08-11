@@ -106,7 +106,7 @@ export const SettingsView = () => {
             <>
               <h3 className="text-sm font-bold text-[#172033] mb-2">System Metadata</h3>
               <div className="text-xs text-[#475569] space-y-1 font-mono">
-                <div>Project Title: AI-Powered Zero Trust Network Intrusion Detection System</div>
+                <div>Project Title: Zero Trust AI-Powered Network Intrusion Detection System</div>
                 <div>Phase: Phase 1 Scope</div>
               </div>
             </>
