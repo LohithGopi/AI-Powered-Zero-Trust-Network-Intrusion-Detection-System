@@ -5,13 +5,14 @@ import {
   Layers, Layers2, ShieldCheck, FileSpreadsheet, GraduationCap, Award
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
+import { IntegratedDashboardPreview } from '../components/IntegratedDashboardPreview';
 
 export const LandingPage = ({ onExplore, onOpenLogin }) => {
   return (
     <div className="min-h-screen bg-[#F5F7FA] dark:bg-[#0B0D0F] text-[#172033] dark:text-[#F3F4F1] transition-colors">
       
       {/* 1. HEADER NAVBAR */}
-      <Navbar onOpenLogin={onOpenLogin} onExplore={onExplore} />
+      <Navbar onOpenLogin={onOpenLogin} onExplore={onOpenLogin} />
 
       {/* 2. CENTERED INSTITUTIONAL LOGO, COLLEGE NAME, DEPARTMENT & PROJECT TITLE BANNER */}
       <section id="jnnce-info" className="pt-10 pb-8 bg-white dark:bg-[#15191C] border-b border-[#E2E8F0] dark:border-[#252A2E]">
@@ -66,7 +67,7 @@ export const LandingPage = ({ onExplore, onOpenLogin }) => {
       </section>
 
       {/* 3. HERO SECTION (PERFECTLY CENTERED & ALIGNED) */}
-      <section id="hero" className="relative pt-10 pb-16 overflow-hidden bg-gradient-to-b from-white to-[#F5F7FA] dark:from-[#15191C] dark:to-[#0B0D0F] border-b border-[#E2E8F0] dark:border-[#252A2E]">
+      <section id="hero" className="relative pt-10 pb-12 overflow-hidden bg-gradient-to-b from-white to-[#F5F7FA] dark:from-[#15191C] dark:to-[#0B0D0F] border-b border-[#E2E8F0] dark:border-[#252A2E]">
         <div className="max-w-4xl mx-auto px-4 text-center space-y-6">
           
           {/* Badge */}
@@ -80,10 +81,10 @@ export const LandingPage = ({ onExplore, onOpenLogin }) => {
             An intelligent network intrusion detection system developed at JNNCE Shivamogga (Department of Information Science and Engineering, Batch No. 34) combining Zero Trust architecture with LSTM neural networks.
           </p>
 
-          {/* Action Button Centered */}
+          {/* Action Button Centered (Triggers Login Modal) */}
           <div className="flex items-center justify-center pt-2">
             <button
-              onClick={onExplore}
+              onClick={onOpenLogin}
               className="px-8 py-3.5 text-xs sm:text-sm font-bold text-white bg-[#1769E0] hover:bg-[#0F3B68] rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2"
             >
               <span>Explore Project</span>
@@ -102,6 +103,25 @@ export const LandingPage = ({ onExplore, onOpenLogin }) => {
               <span>Department of ISE • Batch No. 34</span>
             </div>
           </div>
+
+        </div>
+      </section>
+
+      {/* 4. DASHBOARD INSIGHT PREVIEW SECTION */}
+      <section id="dashboard-insight" className="py-14 bg-white dark:bg-[#15191C] border-b border-[#E2E8F0] dark:border-[#252A2E]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="text-center max-w-3xl mx-auto mb-6">
+            <span className="text-xs font-bold text-[#1769E0] uppercase tracking-wider font-mono">DASHBOARD INSIGHT & PREVIEW</span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#172033] dark:text-[#F3F4F1] mt-1">
+              LIVE SYSTEM TELEMETRY & CONSOLE INSIGHT
+            </h2>
+            <p className="text-sm text-[#475569] dark:text-[#9FA6A8] mt-2">
+              A real-time snapshot of the Security Operations Center dashboard tracking intrusion metrics, traffic classification, and Zero Trust JWT policy enforcement.
+            </p>
+          </div>
+
+          <IntegratedDashboardPreview onExplore={onOpenLogin} />
 
         </div>
       </section>
