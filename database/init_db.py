@@ -107,6 +107,11 @@ class ModelHistory(db.Model):
     precision = db.Column(db.Float, default=0.0)
     recall = db.Column(db.Float, default=0.0)
     f1_score = db.Column(db.Float, default=0.0)
+    training_time = db.Column(db.Float, default=0.0)
+    prediction_time = db.Column(db.Float, default=0.0)
+    model_type = db.Column(db.String(100), default="Deep Learning")
+    framework = db.Column(db.String(100), default="TensorFlow/Keras")
+    model_status = db.Column(db.String(50), default="Trained")
     params_json = db.Column(db.Text, nullable=True)
     artifact_path = db.Column(db.String(512), nullable=True)
 
@@ -115,15 +120,21 @@ class ModelHistory(db.Model):
             "id": self.id,
             "model_name": self.model_name,
             "dataset_name": self.dataset_name,
-            "trained_at": self.trained_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "trained_at": self.trained_at.strftime("%Y-%m-%d %H:%M:%S") if self.trained_at else "N/A",
             "accuracy": round(self.accuracy, 4),
             "loss": round(self.loss, 4),
             "precision": round(self.precision, 4),
             "recall": round(self.recall, 4),
             "f1_score": round(self.f1_score, 4),
+            "training_time": round(self.training_time, 3),
+            "prediction_time": round(self.prediction_time, 4),
+            "model_type": self.model_type,
+            "framework": self.framework,
+            "model_status": self.model_status,
             "params_json": self.params_json,
             "artifact_path": self.artifact_path
         }
+
 
 
 def init_db(app):

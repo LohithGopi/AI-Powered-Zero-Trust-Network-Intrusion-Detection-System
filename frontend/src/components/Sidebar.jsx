@@ -37,6 +37,7 @@ export const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
       title: 'Machine Learning Engine',
       items: [
         { id: 'training', label: 'Model Training', icon: Cpu, isRestricted: isUserRole },
+        { id: 'model-comparison', label: 'Model Comparison', icon: BarChart2 },
         { id: 'model-details', label: 'Model Architecture', icon: Layers },
         { id: 'reports', label: 'Evaluation Reports', icon: FileText }
       ]

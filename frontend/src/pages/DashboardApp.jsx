@@ -4,6 +4,7 @@ import { OverviewView } from './dashboard/OverviewView';
 import { DatasetsView } from './dashboard/DatasetsView';
 import { CompareView } from './dashboard/CompareView';
 import { TrainingView } from './dashboard/TrainingView';
+import { ModelComparisonView } from './dashboard/ModelComparisonView';
 import { ModelDetailsView } from './dashboard/ModelDetailsView';
 import { ReportsView } from './dashboard/ReportsView';
 import { AuditLogsView } from './dashboard/AuditLogsView';
@@ -41,6 +42,8 @@ export const DashboardApp = ({ onBackToLanding }) => {
         return <CompareView />;
       case 'training':
         return <TrainingView onNavigate={setActiveTab} />;
+      case 'model-comparison':
+        return <ModelComparisonView />;
       case 'model-details':
         return <ModelDetailsView />;
       case 'reports':
@@ -51,6 +54,7 @@ export const DashboardApp = ({ onBackToLanding }) => {
         return <TrainingView onNavigate={setActiveTab} />;
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#F5F7FA] dark:bg-[#0B0D0F] text-[#172033] dark:text-[#F3F4F1] flex transition-colors duration-200">

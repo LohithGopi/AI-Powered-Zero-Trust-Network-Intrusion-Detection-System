@@ -87,3 +87,15 @@ export const apiGetModelStatus = async () => {
 export const apiGetModelReport = async () => {
   return await authFetch('/model/report');
 };
+
+// Model Comparison Services (LSTM vs. Baseline ML Models)
+export const apiRunModelComparison = async () => {
+  return await authFetch('/models/compare', {
+    method: 'POST'
+  });
+};
+
+export const apiGetModelComparison = async () => {
+  return await authFetch('/models/comparison');
+};
+
