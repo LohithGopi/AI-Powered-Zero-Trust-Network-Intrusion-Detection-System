@@ -213,7 +213,7 @@ export const TrainingView = ({ onNavigate }) => {
     }, 450);
   };
 
-  // SVG Line Graph Coordinate Generator
+  // Dynamic Dataset-Driven Y-Axis Auto-Scaling
   const totalEpochCount = Math.max(1, epochs);
 
   const getX = (ep) => {
@@ -221,16 +221,34 @@ export const TrainingView = ({ onNavigate }) => {
     return 40 + ((ep - 1) / (totalEpochCount - 1)) * 420;
   };
 
-  // Y for Accuracy (0% -> 100% maps to Y: 170 -> 20)
+  // Compute dynamic Accuracy bounds from dataset epoch history
+  const allAccValues = epochHistory.flatMap(h => [h.trainAcc, h.valAcc]).filter(v => typeof v === 'number' && !isNaN(v));
+  const minAccRaw = allAccValues.length > 0 ? Math.min(...allAccValues) : 68;
+  const maxAccRaw = allAccValues.length > 0 ? Math.max(...allAccValues) : 98;
+  const minAcc = Math.max(0, Math.floor(minAccRaw - 2));
+  const maxAcc = Math.min(100, Math.ceil(maxAccRaw + 2));
+
+  // Compute dynamic Loss bounds from dataset epoch history
+  const allLossValues = epochHistory.flatMap(h => [h.trainLoss, h.valLoss]).filter(v => typeof v === 'number' && !isNaN(v));
+  const minLossRaw = allLossValues.length > 0 ? Math.min(...allLossValues) : 0.02;
+  const maxLossRaw = allLossValues.length > 0 ? Math.max(...allLossValues) : 0.65;
+  const minLoss = Math.max(0, parseFloat((minLossRaw - 0.02).toFixed(2)));
+  const maxLoss = Math.min(1.5, parseFloat((maxLossRaw + 0.02).toFixed(2)));
+
+  // Y for Accuracy (dynamic minAcc -> maxAcc maps to Y: 170 -> 20)
   const getYAcc = (val) => {
-    const clamped = Math.min(100, Math.max(0, val));
-    return 170 - (clamped / 100) * 150;
+    const range = maxAcc - minAcc;
+    if (range <= 0) return 95;
+    const clamped = Math.min(maxAcc, Math.max(minAcc, val));
+    return 170 - ((clamped - minAcc) / range) * 150;
   };
 
-  // Y for Loss (0.0 -> 1.0 maps to Y: 170 -> 20)
+  // Y for Loss (dynamic minLoss -> maxLoss maps to Y: 170 -> 20)
   const getYLoss = (val) => {
-    const clamped = Math.min(1.0, Math.max(0, val));
-    return 170 - (clamped / 1.0) * 150;
+    const range = maxLoss - minLoss;
+    if (range <= 0) return 95;
+    const clamped = Math.min(maxLoss, Math.max(minLoss, val));
+    return 170 - ((clamped - minLoss) / range) * 150;
   };
 
   const trainAccPoints = epochHistory.map(h => `${getX(h.epoch)},${getYAcc(h.trainAcc)}`).join(' ');
@@ -483,8 +501,8 @@ export const TrainingView = ({ onNavigate }) => {
             
             {/* Axis Header */}
             <div className="flex justify-between items-center text-[9px] text-[#475569] dark:text-[#9FA6A8] pb-1 border-b border-[#CBD5E1] dark:border-[#252A2E] z-10">
-              <span>Left Axis: Accuracy (0% ➔ 100%)</span>
-              <span>Right Axis: Categorical Loss (0.0 ➔ 1.0)</span>
+              <span>Left Axis: Accuracy ({minAcc}% ➔ {maxAcc}%) [Dynamic Auto-Scale]</span>
+              <span>Right Axis: Categorical Loss ({minLoss.toFixed(2)} ➔ {maxLoss.toFixed(2)})</span>
             </div>
 
             {/* Main SVG Line Canvas Container */}
@@ -498,13 +516,13 @@ export const TrainingView = ({ onNavigate }) => {
                 <div className="border-b border-slate-400 w-full" />
               </div>
 
-              {/* Y-Axis Labels Overlay */}
-              <div className="absolute left-0 top-2 bottom-6 flex flex-col justify-between text-[8px] text-slate-400 pointer-events-none z-10">
-                <span>100% | 1.0</span>
-                <span>75% | 0.75</span>
-                <span>50% | 0.50</span>
-                <span>25% | 0.25</span>
-                <span>0% | 0.0</span>
+              {/* Dynamic Y-Axis Labels Overlay */}
+              <div className="absolute left-0 top-2 bottom-6 flex flex-col justify-between text-[8px] font-bold text-slate-400 pointer-events-none z-10">
+                <span>{maxAcc}% | {maxLoss.toFixed(2)}</span>
+                <span>{(minAcc + (maxAcc - minAcc) * 0.75).toFixed(1)}% | {(minLoss + (maxLoss - minLoss) * 0.75).toFixed(2)}</span>
+                <span>{(minAcc + (maxAcc - minAcc) * 0.50).toFixed(1)}% | {(minLoss + (maxLoss - minLoss) * 0.50).toFixed(2)}</span>
+                <span>{(minAcc + (maxAcc - minAcc) * 0.25).toFixed(1)}% | {(minLoss + (maxLoss - minLoss) * 0.25).toFixed(2)}</span>
+                <span>{minAcc}% | {minLoss.toFixed(2)}</span>
               </div>
 
               {/* Interactive Hover Tooltip Popup */}
