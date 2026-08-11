@@ -80,22 +80,14 @@ export const LandingPage = ({ onExplore, onOpenLogin }) => {
             An intelligent network intrusion detection system developed at JNNCE Shivamogga (Department of Information Science and Engineering, Batch No. 34) combining Zero Trust architecture with LSTM neural networks.
           </p>
 
-          {/* Action Buttons Centered */}
-          <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4 pt-2">
-            <button
-              onClick={onOpenLogin}
-              className="w-full sm:w-auto px-8 py-3.5 text-xs sm:text-sm font-bold text-white bg-[#1769E0] hover:bg-[#0F3B68] rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2"
-            >
-              <Lock className="h-4 w-4" />
-              <span>Login to Security Portal</span>
-            </button>
-
+          {/* Action Button Centered */}
+          <div className="flex items-center justify-center pt-2">
             <button
               onClick={onExplore}
-              className="w-full sm:w-auto px-8 py-3.5 text-xs sm:text-sm font-bold text-[#172033] dark:text-[#F3F4F1] bg-white dark:bg-[#15191C] hover:bg-slate-50 dark:hover:bg-[#1E2328] border border-[#E2E8F0] dark:border-[#252A2E] rounded-xl shadow-sm transition-all flex items-center justify-center space-x-2"
+              className="px-8 py-3.5 text-xs sm:text-sm font-bold text-white bg-[#1769E0] hover:bg-[#0F3B68] rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2"
             >
               <span>Explore Project</span>
-              <ArrowRight className="h-4 w-4 text-[#1769E0]" />
+              <ArrowRight className="h-4 w-4 fill-white" />
             </button>
           </div>
 
