@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart2, CheckCircle2, Sliders, Database, FileSpreadsheet, Layers } from 'lucide-react';
+import { BarChart2, CheckCircle2, Sliders, Database, FileSpreadsheet, Layers, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const CompareView = () => {
@@ -17,7 +17,7 @@ export const CompareView = () => {
             METRIC COMPARISON
           </span>
           <h1 className="text-xl font-bold text-[#172033] dark:text-[#F3F4F1] mt-1">Dataset Comparison Matrix</h1>
-          <p className="text-xs text-[#475569] dark:text-[#9FA6A8]">Compare feature counts, column parameters, and traffic distributions for datasets selected in Datasets Inventory.</p>
+          <p className="text-xs text-[#475569] dark:text-[#9FA6A8]">Compare row counts, missing cells, duplicate records, and preprocessing purposes across benchmark datasets.</p>
         </div>
 
         {/* Dataset Selection Toggles from Inventory */}
@@ -50,10 +50,15 @@ export const CompareView = () => {
           {comparedItems.map(ds => {
             const isNsl = ds.name.toLowerCase().includes('nsl');
             const isUnsw = ds.name.toLowerCase().includes('unsw');
-            
-            const numFeatures = isNsl ? 38 : isUnsw ? 39 : Math.max(1, ds.cols - 4);
-            const catFeatures = isNsl ? 3 : isUnsw ? 4 : 3;
-            const classesCount = isNsl ? 5 : isUnsw ? 9 : 6;
+            const isCic = ds.name.toLowerCase().includes('cic');
+
+            const rowsCount = isUnsw ? 1007 : isCic ? 1000 : isNsl ? 1010 : ds.rows;
+            const missingCount = isUnsw ? 19 : isCic ? 13 : isNsl ? 0 : (ds.missing || 0);
+            const dupCount = isUnsw ? 7 : isCic ? 0 : isNsl ? 10 : (ds.duplicates || 0);
+            const purposeText = isUnsw ? 'Both preprocessing cases' : isCic ? 'Missing-value handling' : isNsl ? 'Duplicate removal' : (ds.purpose || 'Custom Ingestion');
+
+            const numFeatures = isNsl ? 38 : isUnsw ? 39 : isCic ? 74 : Math.max(1, ds.cols - 4);
+            const catFeatures = isNsl ? 3 : isUnsw ? 4 : isCic ? 4 : 3;
 
             return (
               <div key={ds.id} className={`bg-white dark:bg-[#15191C] border rounded-2xl p-6 shadow-sm space-y-4 relative ${ds.isSelected ? 'border-[#1769E0] ring-1 ring-[#1769E0]' : 'border-[#E2E8F0] dark:border-[#252A2E]'}`}>
@@ -74,34 +79,41 @@ export const CompareView = () => {
                     <span>Dataset Standard:</span>
                     <span className="text-[#172033] dark:text-[#F3F4F1] font-bold">{ds.type}</span>
                   </div>
+
                   <div className="flex justify-between py-1 border-b border-slate-50 dark:border-[#252A2E]/50">
                     <span>Row Count:</span>
-                    <span className="text-[#172033] dark:text-[#F3F4F1] font-bold">{ds.rows.toLocaleString()} Records</span>
+                    <span className="text-[#172033] dark:text-[#F3F4F1] font-bold">{rowsCount.toLocaleString()} Rows</span>
                   </div>
+
                   <div className="flex justify-between py-1 border-b border-slate-50 dark:border-[#252A2E]/50">
                     <span>Total Attributes:</span>
                     <span className="text-[#1769E0] font-bold">{ds.cols} Columns</span>
                   </div>
+
                   <div className="flex justify-between py-1 border-b border-slate-50 dark:border-[#252A2E]/50">
-                    <span>Traffic Categories:</span>
-                    <span className="text-purple-600 dark:text-purple-400 font-bold">{classesCount} Classes</span>
+                    <span>Missing Cells:</span>
+                    <span className={`font-bold ${missingCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {missingCount > 0 ? `${missingCount} Cells (Requires Cleaning)` : '0 Cells (Clean Data)'}
+                    </span>
                   </div>
+
                   <div className="flex justify-between py-1 border-b border-slate-50 dark:border-[#252A2E]/50">
-                    <span>Numerical Features:</span>
-                    <span className="text-[#172033] dark:text-[#F3F4F1]">{numFeatures}</span>
+                    <span>Duplicate Rows:</span>
+                    <span className={`font-bold ${dupCount > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {dupCount > 0 ? `${dupCount} Rows (Requires Deduplication)` : '0 Duplicates'}
+                    </span>
                   </div>
+
                   <div className="flex justify-between py-1 border-b border-slate-50 dark:border-[#252A2E]/50">
-                    <span>Categorical Features:</span>
-                    <span className="text-[#172033] dark:text-[#F3F4F1]">{catFeatures}</span>
+                    <span>Numerical / Categorical:</span>
+                    <span className="text-[#172033] dark:text-[#F3F4F1]">{numFeatures} Num / {catFeatures} Cat</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-slate-50 dark:border-[#252A2E]/50">
-                    <span>File Size:</span>
-                    <span className="text-[#172033] dark:text-[#F3F4F1]">{ds.size}</span>
+
+                  <div className="p-3 rounded-xl bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] space-y-1 mt-2">
+                    <span className="text-[10px] text-[#475569] dark:text-[#9FA6A8] block uppercase tracking-wider">Preprocessing Purpose:</span>
+                    <span className="text-xs font-bold text-[#172033] dark:text-[#F3F4F1] block">{purposeText}</span>
                   </div>
-                  <div className="flex justify-between py-1">
-                    <span>Missing Records:</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">0 (Verified Clean)</span>
-                  </div>
+
                 </div>
               </div>
             );

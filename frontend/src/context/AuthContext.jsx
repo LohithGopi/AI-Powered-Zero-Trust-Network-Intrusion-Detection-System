@@ -3,10 +3,53 @@ import { apiLogin } from '../services/api';
 
 const AuthContext = createContext(null);
 
-// Default real benchmark datasets
+// Official Benchmark Datasets per Project Specification Table
 const DEFAULT_DATASETS = [
-  { id: 1, name: 'nsl_kdd_intrusion_dataset.csv', type: 'NSL-KDD', rows: 5000, cols: 42, size: '0.62 MB', status: 'Uploaded', date: '2026-08-10 14:20', isSelected: true, isCompared: true },
-  { id: 2, name: 'unsw_nb15_network_flow_dataset.csv', type: 'UNSW-NB15', rows: 5000, cols: 43, size: '0.78 MB', status: 'Uploaded', date: '2026-08-10 12:15', isSelected: false, isCompared: true }
+  { 
+    id: 1, 
+    name: 'nsl_kdd_intrusion_dataset.csv', 
+    type: 'NSL-KDD', 
+    rows: 1010, 
+    cols: 42, 
+    size: '0.12 MB', 
+    status: 'Uploaded', 
+    date: '2026-08-10 14:20', 
+    isSelected: true, 
+    isCompared: true,
+    missing: 0,
+    duplicates: 10,
+    purpose: 'Duplicate removal'
+  },
+  { 
+    id: 2, 
+    name: 'unsw_nb15_network_flow_dataset.csv', 
+    type: 'UNSW-NB15', 
+    rows: 1007, 
+    cols: 43, 
+    size: '0.15 MB', 
+    status: 'Uploaded', 
+    date: '2026-08-10 12:15', 
+    isSelected: false, 
+    isCompared: true,
+    missing: 19,
+    duplicates: 7,
+    purpose: 'Both preprocessing cases'
+  },
+  { 
+    id: 3, 
+    name: 'cicids2017_traffic_dataset.csv', 
+    type: 'CICIDS2017', 
+    rows: 1000, 
+    cols: 78, 
+    size: '0.24 MB', 
+    status: 'Uploaded', 
+    date: '2026-08-10 11:00', 
+    isSelected: false, 
+    isCompared: true,
+    missing: 13,
+    duplicates: 0,
+    purpose: 'Missing-value handling'
+  }
 ];
 
 export const AuthProvider = ({ children }) => {
@@ -30,7 +73,13 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsed = JSON.parse(savedDs);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(d => ({ ...d, isCompared: d.isCompared !== undefined ? d.isCompared : true }));
+          return parsed.map(d => ({ 
+            ...d, 
+            isCompared: d.isCompared !== undefined ? d.isCompared : true,
+            missing: d.missing !== undefined ? d.missing : (d.type === 'UNSW-NB15' ? 19 : d.type === 'CICIDS2017' ? 13 : 0),
+            duplicates: d.duplicates !== undefined ? d.duplicates : (d.type === 'NSL-KDD' ? 10 : d.type === 'UNSW-NB15' ? 7 : 0),
+            purpose: d.purpose || (d.type === 'UNSW-NB15' ? 'Both preprocessing cases' : d.type === 'CICIDS2017' ? 'Missing-value handling' : 'Duplicate removal')
+          }));
         }
       } catch (err) {
         console.warn('Could not parse saved datasets, using defaults:', err);
@@ -62,7 +111,17 @@ export const AuthProvider = ({ children }) => {
       const updated = autoSelect 
         ? prev.map(d => ({ ...d, isSelected: false }))
         : prev;
-      const newList = [{ ...ds, isSelected: autoSelect, isCompared: true }, ...updated];
+      const newList = [
+        { 
+          ...ds, 
+          isSelected: autoSelect, 
+          isCompared: true,
+          missing: ds.missing !== undefined ? ds.missing : 0,
+          duplicates: ds.duplicates !== undefined ? ds.duplicates : 0,
+          purpose: ds.purpose || 'Custom Ingestion'
+        }, 
+        ...updated
+      ];
       localStorage.setItem('nids_datasets', JSON.stringify(newList));
       return newList;
     });
