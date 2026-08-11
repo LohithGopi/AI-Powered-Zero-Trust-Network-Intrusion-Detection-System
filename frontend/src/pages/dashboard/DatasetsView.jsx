@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Upload, Trash2, FileSpreadsheet, Lock } from 'lucide-react';
+import { Upload, Trash2, FileSpreadsheet, Lock, BarChart2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const DatasetsView = ({ onNavigate }) => {
-  const { user, role, datasets, selectDataset, addDataset, removeDataset } = useAuth();
+  const { user, role, datasets, selectDataset, toggleCompareDataset, addDataset, removeDataset } = useAuth();
   const currentRole = role || user?.role || 'Admin';
 
   const canUpload = currentRole === 'Admin' || currentRole === 'Analyst';
@@ -15,6 +15,8 @@ export const DatasetsView = ({ onNavigate }) => {
   const [uploadError, setUploadError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  const comparedCount = datasets.filter(d => d.isCompared).length;
+
   const handleSelect = (id, name) => {
     if (!canUpload) {
       alert('Role Restriction: Only Admin and Analyst roles can select datasets for model training.');
@@ -23,6 +25,13 @@ export const DatasetsView = ({ onNavigate }) => {
     selectDataset(id);
     setSuccessMsg(`Dataset '${name}' selected as active target for neural network training.`);
     setTimeout(() => setSuccessMsg(''), 4000);
+  };
+
+  const handleToggleCompare = (id, name, isCurrentlyCompared) => {
+    toggleCompareDataset(id);
+    const actionText = !isCurrentlyCompared ? 'added to' : 'removed from';
+    setSuccessMsg(`Dataset '${name}' ${actionText} comparison matrix.`);
+    setTimeout(() => setSuccessMsg(''), 3000);
   };
 
   const handleDelete = (id, name) => {
@@ -58,7 +67,7 @@ export const DatasetsView = ({ onNavigate }) => {
     reader.onload = (event) => {
       const text = event.target.result;
       const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
-      const rowCount = Math.max(1, lines.length - 1); // Exclude header line
+      const rowCount = Math.max(1, lines.length - 1);
       const headerCols = lines[0] ? lines[0].split(',').length : 42;
 
       const newDs = {
@@ -70,18 +79,18 @@ export const DatasetsView = ({ onNavigate }) => {
         size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
         status: 'Uploaded',
         date: new Date().toISOString().replace('T', ' ').substring(0, 16),
-        isSelected: true
+        isSelected: true,
+        isCompared: true
       };
 
-      addDataset(newDs, true); // Auto-select newly uploaded custom dataset
+      addDataset(newDs, true);
       setShowUploadModal(false);
       setSelectedFile(null);
-      setSuccessMsg(`Custom dataset '${newDs.name}' uploaded and selected as active target for model training.`);
+      setSuccessMsg(`Custom dataset '${newDs.name}' uploaded, active for training, and added to comparison matrix.`);
       setTimeout(() => setSuccessMsg(''), 5000);
     };
 
     reader.onerror = () => {
-      // Fallback if reader fails
       const newDs = {
         id: Date.now(),
         name: selectedFile.name,
@@ -91,16 +100,17 @@ export const DatasetsView = ({ onNavigate }) => {
         size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
         status: 'Uploaded',
         date: new Date().toISOString().replace('T', ' ').substring(0, 16),
-        isSelected: true
+        isSelected: true,
+        isCompared: true
       };
       addDataset(newDs, true);
       setShowUploadModal(false);
       setSelectedFile(null);
-      setSuccessMsg(`Custom dataset '${newDs.name}' uploaded and selected as active target.`);
+      setSuccessMsg(`Custom dataset '${newDs.name}' uploaded and added to comparison matrix.`);
       setTimeout(() => setSuccessMsg(''), 5000);
     };
 
-    reader.readAsText(selectedFile.slice(0, 5000000)); // Read up to 5MB slice for metadata
+    reader.readAsText(selectedFile.slice(0, 5000000));
   };
 
   return (
@@ -123,23 +133,33 @@ export const DatasetsView = ({ onNavigate }) => {
             ZERO TRUST REPOSITORY
           </span>
           <h1 className="text-xl font-bold text-[#172033] dark:text-[#F3F4F1] mt-1">Datasets Inventory</h1>
-          <p className="text-xs text-[#475569] dark:text-[#9FA6A8]">Upload, inspect, and select custom network flow datasets for model training.</p>
+          <p className="text-xs text-[#475569] dark:text-[#9FA6A8]">Upload, inspect, select active target, and choose datasets for side-by-side comparison.</p>
         </div>
 
-        {canUpload ? (
+        <div className="flex items-center space-x-3">
           <button
-            onClick={() => setShowUploadModal(true)}
-            className="flex items-center space-x-2 text-xs font-semibold text-white bg-[#1769E0] hover:bg-[#0F3B68] px-4 py-2.5 rounded-xl shadow-md transition-all"
+            onClick={() => onNavigate('compare')}
+            className="flex items-center space-x-2 text-xs font-semibold text-[#172033] dark:text-[#F3F4F1] bg-white dark:bg-[#15191C] border border-[#E2E8F0] dark:border-[#252A2E] hover:bg-slate-50 dark:hover:bg-[#1E2328] px-4 py-2.5 rounded-xl shadow-xs transition-all"
           >
-            <Upload className="h-4 w-4" />
-            <span>Upload CSV Dataset</span>
+            <BarChart2 className="h-4 w-4 text-[#1769E0]" />
+            <span>Compare Selected ({comparedCount})</span>
           </button>
-        ) : (
-          <button disabled className="flex items-center space-x-2 text-xs font-semibold text-slate-400 bg-slate-100 dark:bg-[#0B0D0F] border border-slate-200 dark:border-[#252A2E] px-4 py-2.5 rounded-xl cursor-not-allowed">
-            <Lock className="h-4 w-4 text-slate-400" />
-            <span>Upload Disabled (Read-Only)</span>
-          </button>
-        )}
+
+          {canUpload ? (
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center space-x-2 text-xs font-semibold text-white bg-[#1769E0] hover:bg-[#0F3B68] px-4 py-2.5 rounded-xl shadow-md transition-all"
+            >
+              <Upload className="h-4 w-4" />
+              <span>Upload CSV Dataset</span>
+            </button>
+          ) : (
+            <button disabled className="flex items-center space-x-2 text-xs font-semibold text-slate-400 bg-slate-100 dark:bg-[#0B0D0F] border border-slate-200 dark:border-[#252A2E] px-4 py-2.5 rounded-xl cursor-not-allowed">
+              <Lock className="h-4 w-4 text-slate-400" />
+              <span>Upload Disabled (Read-Only)</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {successMsg && (
@@ -160,7 +180,7 @@ export const DatasetsView = ({ onNavigate }) => {
                 <th className="py-3 px-4">Columns</th>
                 <th className="py-3 px-4">File Size</th>
                 <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">RBAC Actions</th>
+                <th className="py-3 px-4 text-right">RBAC Actions & Selection</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#252A2E]">
@@ -185,6 +205,20 @@ export const DatasetsView = ({ onNavigate }) => {
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold">{ds.status}</span>
                   </td>
                   <td className="py-3 px-4 text-right space-x-2">
+                    {/* Compare Selection Button */}
+                    <button
+                      onClick={() => handleToggleCompare(ds.id, ds.name, ds.isCompared)}
+                      className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
+                        ds.isCompared
+                          ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
+                          : 'bg-slate-100 dark:bg-[#0B0D0F] text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-[#1E2328]'
+                      }`}
+                      title="Toggle inclusion in Dataset Comparison Matrix"
+                    >
+                      {ds.isCompared ? '✓ Comparing' : '+ Compare'}
+                    </button>
+
+                    {/* Active Target Training Selection Button */}
                     <button
                       onClick={() => handleSelect(ds.id, ds.name)}
                       disabled={!canUpload || ds.isSelected}
@@ -196,19 +230,20 @@ export const DatasetsView = ({ onNavigate }) => {
                           : 'bg-slate-100 dark:bg-[#0B0D0F] text-slate-400 cursor-not-allowed'
                       }`}
                     >
-                      {ds.isSelected ? '✓ Active' : canUpload ? 'Select Target' : '🔒 Select'}
+                      {ds.isSelected ? '✓ Active Target' : canUpload ? 'Select Target' : '🔒 Select'}
                     </button>
 
+                    {/* Admin Delete Button */}
                     {canDelete ? (
                       <button
                         onClick={() => handleDelete(ds.id, ds.name)}
-                        className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                        className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors inline-block align-middle"
                         title="Delete Dataset (Admin Only)"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     ) : (
-                      <span className="text-[10px] text-slate-400 font-mono ml-1" title="Requires Admin Role">🔒 Admin Only</span>
+                      <span className="text-[10px] text-slate-400 font-mono ml-1" title="Requires Admin Role">🔒</span>
                     )}
                   </td>
                 </tr>

@@ -5,8 +5,8 @@ const AuthContext = createContext(null);
 
 // Default real benchmark datasets
 const DEFAULT_DATASETS = [
-  { id: 1, name: 'nsl_kdd_intrusion_dataset.csv', type: 'NSL-KDD', rows: 5000, cols: 42, size: '0.62 MB', status: 'Uploaded', date: '2026-08-10 14:20', isSelected: true },
-  { id: 2, name: 'unsw_nb15_network_flow_dataset.csv', type: 'UNSW-NB15', rows: 5000, cols: 43, size: '0.78 MB', status: 'Uploaded', date: '2026-08-10 12:15', isSelected: false }
+  { id: 1, name: 'nsl_kdd_intrusion_dataset.csv', type: 'NSL-KDD', rows: 5000, cols: 42, size: '0.62 MB', status: 'Uploaded', date: '2026-08-10 14:20', isSelected: true, isCompared: true },
+  { id: 2, name: 'unsw_nb15_network_flow_dataset.csv', type: 'UNSW-NB15', rows: 5000, cols: 43, size: '0.78 MB', status: 'Uploaded', date: '2026-08-10 12:15', isSelected: false, isCompared: true }
 ];
 
 export const AuthProvider = ({ children }) => {
@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsed = JSON.parse(savedDs);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.map(d => ({ ...d, isCompared: d.isCompared !== undefined ? d.isCompared : true }));
         }
       } catch (err) {
         console.warn('Could not parse saved datasets, using defaults:', err);
@@ -49,12 +49,20 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  const toggleCompareDataset = (id) => {
+    setDatasets(prev => {
+      const updated = prev.map(d => (d.id === id ? { ...d, isCompared: !d.isCompared } : d));
+      localStorage.setItem('nids_datasets', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const addDataset = (ds, autoSelect = true) => {
     setDatasets(prev => {
       const updated = autoSelect 
         ? prev.map(d => ({ ...d, isSelected: false }))
         : prev;
-      const newList = [{ ...ds, isSelected: autoSelect }, ...updated];
+      const newList = [{ ...ds, isSelected: autoSelect, isCompared: true }, ...updated];
       localStorage.setItem('nids_datasets', JSON.stringify(newList));
       return newList;
     });
@@ -124,7 +132,6 @@ export const AuthProvider = ({ children }) => {
       setUser(userObj);
       setIsAuthenticated(true);
 
-      // Reset model status to Untrained, but PERSIST saved dataset selection!
       resetModelStatus();
 
       localStorage.setItem('nids_user', JSON.stringify(userObj));
@@ -147,7 +154,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('nids_user');
     setIsAuthenticated(false);
     
-    // Reset model status to Untrained, but PERSIST saved dataset selection!
     resetModelStatus();
     setUser({ username: 'admin', role: 'Admin', email: 'admin@jnnce.ac.in' });
   };
@@ -164,7 +170,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{
       user, role: currentRole, isAuthenticated, loading, login, logout, switchRole,
       // Dataset collection (persisted across logouts)
-      datasets, activeDataset, selectDataset, addDataset, removeDataset,
+      datasets, activeDataset, selectDataset, toggleCompareDataset, addDataset, removeDataset,
       // Model training session state
       modelStatus, setModelStatus, modelMetrics, setTrainedModel, resetModelStatus
     }}>
