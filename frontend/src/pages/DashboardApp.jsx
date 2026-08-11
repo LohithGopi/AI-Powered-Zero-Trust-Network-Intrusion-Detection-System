@@ -11,7 +11,7 @@ import { ProfileView } from './dashboard/ProfileView';
 import { useAuth } from '../context/AuthContext';
 
 export const DashboardApp = ({ onBackToLanding }) => {
-  const [activeTab, setActiveTab] = useState('training');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [showProfile, setShowProfile] = useState(false);
   const { user, role, logout } = useAuth();
 
@@ -43,7 +43,7 @@ export const DashboardApp = ({ onBackToLanding }) => {
       case 'audit-logs':
         return <AuditLogsView />;
       default:
-        return <TrainingView onNavigate={setActiveTab} />;
+        return <OverviewView onNavigate={setActiveTab} />;
     }
   };
 
