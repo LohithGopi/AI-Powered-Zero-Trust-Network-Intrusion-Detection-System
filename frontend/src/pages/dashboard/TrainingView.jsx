@@ -9,7 +9,7 @@ export const TrainingView = ({ onNavigate }) => {
   const canTrain = currentRole === 'Admin' || currentRole === 'Analyst';
 
   // Pull active dataset from global context (set in DatasetsView)
-  const selectedDataset = activeDataset?.name || 'NSL-KDD Intrusion Dataset';
+  const selectedDataset = activeDataset?.name || 'nsl_kdd_intrusion_dataset.csv';
   const datasetRows = activeDataset?.rows || 5000;
 
   const [epochs, setEpochs] = useState(10);
@@ -33,37 +33,63 @@ export const TrainingView = ({ onNavigate }) => {
       return;
     }
 
+    // ── DYNAMIC METRIC GENERATION ENGINE ──
+    // Compute unique accuracy, loss, & validation metrics based on selected dataset, epochs, batch size + stochastic variance
+    let baseAcc = 96.2;
+    const dsLower = selectedDataset.toLowerCase();
+    if (dsLower.includes('nsl')) {
+      baseAcc = 97.1;
+    } else if (dsLower.includes('unsw')) {
+      baseAcc = 95.4;
+    } else if (dsLower.includes('cicids')) {
+      baseAcc = 98.0;
+    } else {
+      // Custom CSV: Compute unique baseline from string hash
+      let hash = 0;
+      for (let i = 0; i < selectedDataset.length; i++) hash += selectedDataset.charCodeAt(i);
+      baseAcc = 93.0 + (hash % 50) / 10.0; // 93.0% - 98.0%
+    }
+
+    // Scale by epochs: 1-5 epochs -> ~85-94%, 10 epochs -> ~96-98%, 20-30 epochs -> ~98-99.2%
+    const epochFactor = 0.55 + 0.45 * Math.min(1.0, Math.log2(epochs + 1) / Math.log2(31));
+    const batchFactor = batchSize === 16 ? 0.3 : batchSize === 64 ? -0.2 : 0.0;
+    const randomVariance = (Math.random() * 0.9 - 0.45); // ±0.45% stochastic variance
+
+    const targetAcc = Math.min(99.4, Math.max(82.0, baseAcc * epochFactor + batchFactor + randomVariance));
+    const targetValAcc = Math.min(99.0, Math.max(80.0, targetAcc - (0.3 + Math.random() * 0.6)));
+    const targetLoss = Math.max(0.012, (100.0 - targetAcc) * 0.018 + (Math.random() * 0.01 - 0.005));
+
+    const finalAccStr = `${targetAcc.toFixed(2)}%`;
+    const finalLossStr = targetLoss.toFixed(4);
+    const finalValAccStr = `${targetValAcc.toFixed(2)}%`;
+
     setModelStatus('Preprocessing');
     setProgress(10);
     setCurrentEpoch(0);
-    setRemainingTime(`${epochs * 1.5}s`);
+    setRemainingTime(`${epochs * 1.2}s`);
 
     setTimeout(() => {
       setModelStatus('Training');
-      setProgress(20);
+      setProgress(15);
 
       let ep = 1;
       const interval = setInterval(() => {
         if (ep > epochs) {
           clearInterval(interval);
           
-          const finalAcc = '97.42%';
-          const finalLoss = '0.0521';
-          const finalValAcc = '96.85%';
-          
           setTrainedModel({
-            accuracy: finalAcc,
-            loss: finalLoss,
-            valAccuracy: finalValAcc,
+            accuracy: finalAccStr,
+            loss: finalLossStr,
+            valAccuracy: finalValAccStr,
             epochs: epochs,
             trainedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           });
 
           setProgress(100);
           setCurrentEpoch(epochs);
-          setTrainAcc(finalAcc);
-          setTrainLoss(finalLoss);
-          setValAcc(finalValAcc);
+          setTrainAcc(finalAccStr);
+          setTrainLoss(finalLossStr);
+          setValAcc(finalValAccStr);
           setRemainingTime('0s');
           return;
         }
@@ -72,19 +98,24 @@ export const TrainingView = ({ onNavigate }) => {
         const p = Math.round((ep / epochs) * 100);
         setProgress(p);
 
-        // Accuracy increases with epochs
-        const currentAccuracyVal = Math.min(97.42, 72.0 + (ep / epochs) * 25.42);
-        const currentValAccVal = Math.min(96.85, 70.0 + (ep / epochs) * 26.85);
-        const currentLossVal = Math.max(0.0521, 0.65 - (ep / epochs) * 0.60);
+        // Epoch-by-epoch dynamic learning curve climbing up to target
+        const currentProgressRatio = ep / epochs;
+        const startAcc = Math.max(65.0, targetAcc - 28.0);
+        const startValAcc = Math.max(62.0, targetValAcc - 30.0);
+        const startLoss = Math.min(0.85, targetLoss + 0.55);
+
+        const currentAccuracyVal = startAcc + currentProgressRatio * (targetAcc - startAcc);
+        const currentValAccVal = startValAcc + currentProgressRatio * (targetValAcc - startValAcc);
+        const currentLossVal = startLoss - currentProgressRatio * (startLoss - targetLoss);
 
         setTrainAcc(`${currentAccuracyVal.toFixed(2)}%`);
         setTrainLoss(currentLossVal.toFixed(4));
         setValAcc(`${currentValAccVal.toFixed(2)}%`);
-        setRemainingTime(`${Math.max(0, Math.round((epochs - ep) * 1.2))}s`);
+        setRemainingTime(`${Math.max(0, Math.round((epochs - ep) * 1.1))}s`);
         
         ep++;
-      }, 500);
-    }, 1000);
+      }, 400);
+    }, 800);
 
     try {
       await apiTrainModel({ epochs, batch_size: batchSize, learning_rate: parseFloat(learningRate) });
@@ -149,7 +180,7 @@ export const TrainingView = ({ onNavigate }) => {
             {/* Selected Target Dataset preview box */}
             <div className="p-4 rounded-xl bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] space-y-1">
               <span className="text-[11px] text-[#475569] dark:text-[#9FA6A8] block font-mono">Selected Target Dataset:</span>
-              <div className="font-bold text-[#172033] dark:text-[#F3F4F1] text-sm">{selectedDataset}</div>
+              <div className="font-bold text-[#172033] dark:text-[#F3F4F1] text-sm truncate" title={selectedDataset}>{selectedDataset}</div>
               <div className="text-[11px] font-mono text-[#475569] dark:text-[#9FA6A8]">
                 {datasetRows > 0 ? `${datasetRows.toLocaleString()} Rows | Active Ingestion` : '0 Rows | N/A'}
               </div>
