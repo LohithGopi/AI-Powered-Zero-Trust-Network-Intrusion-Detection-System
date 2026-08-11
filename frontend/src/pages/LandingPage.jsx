@@ -65,11 +65,12 @@ export const LandingPage = ({ onExplore, onOpenLogin }) => {
           {/* Action Button Centered */}
           <div className="flex items-center justify-center pt-2">
             <button
-              onClick={onExplore}
+              onClick={onOpenLogin}
               className="px-8 py-3.5 text-xs sm:text-sm font-bold text-white bg-[#1769E0] hover:bg-[#0F3B68] rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2"
             >
-              <span>Explore Security Portal</span>
-              <ArrowRight className="h-4 w-4 fill-white" />
+              <Lock className="h-4 w-4 text-white" />
+              <span>Explore Dashboard</span>
+              <ArrowRight className="h-4 w-4" />
             </button>
           </div>
 
