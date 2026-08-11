@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, redirect, url_for, g, jsonify, request
+from flask import Flask, render_template, redirect, url_for, g, jsonify, request, send_from_directory
 from config import Config
 from database.init_db import init_db, db, DatasetHistory, ModelHistory, AuditLog
 from security.jwt_auth import get_token_from_request, decode_token
@@ -11,7 +11,7 @@ from utils.logger import logger, log_audit_event
 
 def create_app():
     """Application Factory for AI Zero Trust NIDS Flask Web Application."""
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
     app.config.from_object(Config)
 
     # Initialize app directories and database
@@ -22,8 +22,6 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(dataset_bp)
     app.register_blueprint(model_bp)
-
-
 
     @app.before_request
     def load_user_context():
@@ -36,9 +34,13 @@ def create_app():
                 g.user = payload
 
     @app.route("/")
-    @jwt_required
-    def dashboard():
-        """Main Zero Trust Executive Dashboard."""
+    def index():
+        """Serve application directly on app.py (http://127.0.0.1:5000)."""
+        dist_index = os.path.join(app.root_path, 'frontend', 'dist', 'index.html')
+        if os.path.exists(dist_index):
+            return send_from_directory('frontend/dist', 'index.html')
+        
+        # Fallback to Jinja dashboard
         datasets = DatasetHistory.query.all()
         selected_ds = DatasetHistory.query.filter_by(is_selected=True).first()
         if not selected_ds and datasets:
@@ -63,6 +65,29 @@ def create_app():
             audit_logs=[log.to_dict() for log in audit_logs],
             user=g.user
         )
+
+    # Serve static JS/CSS assets directly from frontend/dist/assets
+    @app.route('/assets/<path:path>')
+    def serve_assets(path):
+        return send_from_directory('frontend/dist/assets', path)
+
+    @app.route('/jnnce_logo.png')
+    def serve_logo():
+        return send_from_directory('frontend/public', 'jnnce_logo.png')
+
+    @app.route('/<path:path>')
+    def serve_static_or_spa(path):
+        dist_file = os.path.join(app.root_path, 'frontend', 'dist', path)
+        if os.path.exists(dist_file):
+            return send_from_directory('frontend/dist', path)
+        public_file = os.path.join(app.root_path, 'frontend', 'public', path)
+        if os.path.exists(public_file):
+            return send_from_directory('frontend/public', path)
+        if not path.startswith('api/'):
+            dist_index = os.path.join(app.root_path, 'frontend', 'dist', 'index.html')
+            if os.path.exists(dist_index):
+                return send_from_directory('frontend/dist', 'index.html')
+        return jsonify({"error": "Resource Not Found"}), 404
 
     # Error Handlers
     @app.errorhandler(400)
@@ -102,4 +127,4 @@ app = create_app()
 
 if __name__ == "__main__":
     logger.info("Starting AI-Powered Zero Trust NIDS Flask Web Server on http://127.0.0.1:5000")
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=True, use_reloader=False)

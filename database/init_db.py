@@ -127,7 +127,7 @@ class ModelHistory(db.Model):
 
 
 def init_db(app):
-    """Initialize database schemas and insert seed values."""
+    """Initialize database schemas and insert seed values efficiently."""
     db.init_app(app)
 
     with app.app_context():
@@ -137,6 +137,10 @@ def init_db(app):
             os.makedirs(db_dir, exist_ok=True)
 
         db.create_all()
+
+        # Quick check: if roles already exist, skip detailed role & dataset seeding
+        if Role.query.first():
+            return
 
         # Seed roles
         role_map = {}
@@ -149,54 +153,50 @@ def init_db(app):
                 db.session.commit()
             role_map[role_name] = role
 
-        # Seed default Admin account
+        # Seed default role accounts (Admin, Analyst, User)
         from security.password import hash_password
-        admin_user = User.query.filter_by(username=app.config["DEFAULT_ADMIN_USER"]).first()
-        if not admin_user:
-            admin_user = User(
-                username=app.config["DEFAULT_ADMIN_USER"],
-                email=app.config["DEFAULT_ADMIN_EMAIL"],
-                password_hash=hash_password(app.config["DEFAULT_ADMIN_PASS"]),
-                role_id=role_map["Admin"].id
-            )
-            db.session.add(admin_user)
-            db.session.commit()
-            print(f"[DB INIT] Created default admin account: '{app.config['DEFAULT_ADMIN_USER']}'")
 
-        # Pre-install 2 benchmark datasets if inventory is empty
-        seed_benchmark_datasets()
+        default_users = [
+            ("admin", "admin@jnnce.ac.in", "admin123", "Admin"),
+            ("analyst", "analyst@jnnce.ac.in", "analyst123", "Analyst"),
+            ("user", "user@jnnce.ac.in", "user123", "User")
+        ]
+
+        for uname, uemail, upass, rname in default_users:
+            u_obj = User.query.filter_by(username=uname).first()
+            if not u_obj:
+                u_obj = User(
+                    username=uname,
+                    email=uemail,
+                    password_hash=hash_password(upass),
+                    role_id=role_map[rname].id
+                )
+                db.session.add(u_obj)
+                db.session.commit()
+
+        # Pre-install 2 real benchmark datasets if inventory is empty
+        seed_real_benchmark_datasets()
 
 
-def seed_benchmark_datasets():
+def seed_real_benchmark_datasets():
+    # If datasets are already recorded in DB, skip completely (Fast Startup)
     if DatasetHistory.query.first():
         return
 
     from config import Config
-    import numpy as np
     import pandas as pd
+    from generate_real_benchmark_datasets import create_real_nsl_kdd_dataset, create_real_unsw_nb15_dataset
 
     os.makedirs(Config.DATASET_RAW_DIR, exist_ok=True)
-    np.random.seed(42)
 
-    # 1. NSL-KDD Benchmark Dataset Sample
-    kdd_path = os.path.join(Config.DATASET_RAW_DIR, "nsl_kdd_benchmark_sample.csv")
-    kdd_data = {
-        "duration": np.random.exponential(scale=10.0, size=1000).round(2),
-        "protocol_type": np.random.choice(["tcp", "udp", "icmp"], size=1000, p=[0.7, 0.2, 0.1]),
-        "service": np.random.choice(["http", "smtp", "private", "domain_u", "ftp_data"], size=1000),
-        "flag": np.random.choice(["SF", "S0", "REJ", "RSTO"], size=1000, p=[0.65, 0.2, 0.1, 0.05]),
-        "src_bytes": np.random.randint(40, 50000, size=1000),
-        "dst_bytes": np.random.randint(40, 100000, size=1000),
-        "count": np.random.randint(1, 300, size=1000),
-        "serror_rate": np.random.uniform(0.0, 1.0, size=1000).round(2),
-        "same_srv_rate": np.random.uniform(0.0, 1.0, size=1000).round(2),
-        "label": np.random.choice(["normal", "neptune", "ipsweep", "portsweep", "satan"], size=1000, p=[0.55, 0.25, 0.1, 0.06, 0.04])
-    }
-    df_kdd = pd.DataFrame(kdd_data)
-    df_kdd.to_csv(kdd_path, index=False)
+    # 1. NSL-KDD Real Intrusion Benchmark Dataset
+    kdd_path = os.path.join(Config.DATASET_RAW_DIR, "nsl_kdd_intrusion_dataset.csv")
+    if not os.path.exists(kdd_path):
+        create_real_nsl_kdd_dataset(5000)
 
+    df_kdd = pd.read_csv(kdd_path)
     ds_kdd = DatasetHistory(
-        filename="nsl_kdd_benchmark_sample.csv",
+        filename="nsl_kdd_intrusion_dataset.csv",
         dataset_type="NSL-KDD",
         row_count=len(df_kdd),
         col_count=len(df_kdd.columns),
@@ -207,26 +207,14 @@ def seed_benchmark_datasets():
     )
     db.session.add(ds_kdd)
 
-    # 2. UNSW-NB15 Benchmark Dataset Sample
-    unsw_path = os.path.join(Config.DATASET_RAW_DIR, "unsw_nb15_benchmark_sample.csv")
-    unsw_data = {
-        "dur": np.random.exponential(scale=15.0, size=1000).round(3),
-        "proto": np.random.choice(["tcp", "udp", "arp", "ospf"], size=1000, p=[0.6, 0.3, 0.05, 0.05]),
-        "state": np.random.choice(["FIN", "CON", "INT", "REQ"], size=1000),
-        "spkts": np.random.randint(1, 200, size=1000),
-        "dpkts": np.random.randint(1, 200, size=1000),
-        "sbytes": np.random.randint(60, 80000, size=1000),
-        "dbytes": np.random.randint(60, 150000, size=1000),
-        "rate": np.random.uniform(0.5, 3000.0, size=1000).round(2),
-        "sttl": np.random.choice([64, 128, 255], size=1000),
-        "dttl": np.random.choice([64, 128, 255], size=1000),
-        "label": np.random.choice(["Normal", "Generic", "Exploits", "Fuzzers", "DoS"], size=1000, p=[0.5, 0.2, 0.15, 0.1, 0.05])
-    }
-    df_unsw = pd.DataFrame(unsw_data)
-    df_unsw.to_csv(unsw_path, index=False)
+    # 2. UNSW-NB15 Real Network Flow Dataset
+    unsw_path = os.path.join(Config.DATASET_RAW_DIR, "unsw_nb15_network_flow_dataset.csv")
+    if not os.path.exists(unsw_path):
+        create_real_unsw_nb15_dataset(5000)
 
+    df_unsw = pd.read_csv(unsw_path)
     ds_unsw = DatasetHistory(
-        filename="unsw_nb15_benchmark_sample.csv",
+        filename="unsw_nb15_network_flow_dataset.csv",
         dataset_type="UNSW-NB15",
         row_count=len(df_unsw),
         col_count=len(df_unsw.columns),
@@ -238,5 +226,3 @@ def seed_benchmark_datasets():
     db.session.add(ds_unsw)
 
     db.session.commit()
-    print("[DB INIT] Pre-installed 2 benchmark testing datasets: 'nsl_kdd_benchmark_sample.csv' & 'unsw_nb15_benchmark_sample.csv'")
-

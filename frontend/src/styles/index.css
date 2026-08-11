@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #F5F7FA;
+    --bg-card: #FFFFFF;
+    --text-main: #172033;
+    --text-sub: #475569;
+    --border-color: #E2E8F0;
+  }
+
+  .dark {
+    --bg-main: #0B0D0F;
+    --bg-card: #15191C;
+    --text-main: #F3F4F1;
+    --text-sub: #9FA6A8;
+    --border-color: #252A2E;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    @apply antialiased selection:bg-blue-500/20 selection:text-[#1769E0] transition-colors duration-200;
+  }
+}
+
+/* System Appearance Auto Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg-main: #0B0D0F;
+    --bg-card: #15191C;
+    --text-main: #F3F4F1;
+    --text-sub: #9FA6A8;
+    --border-color: #252A2E;
+  }
+}
+
+/* Theme Adaptive Utility Classes */
+.adaptive-bg {
+  background-color: var(--bg-main) !important;
+}
+
+.adaptive-card {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+
+.adaptive-text {
+  color: var(--text-main) !important;
+}
+
+.adaptive-subtext {
+  color: var(--text-sub) !important;
+}
+
+.adaptive-border {
+  border-color: var(--border-color) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #252A2E;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Card hover animation */
+.hover-card-rise {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-card-rise:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(23, 105, 224, 0.12);
+}

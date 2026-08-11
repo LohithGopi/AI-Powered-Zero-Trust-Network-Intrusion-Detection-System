@@ -21,6 +21,7 @@ def forgot_password_page():
 
 
 @auth_bp.route("/api/register", methods=["POST"])
+@auth_bp.route("/api/auth/register", methods=["POST"])
 def register_api():
     data = request.get_json() or request.form
     username = data.get("username", "").strip()
@@ -69,6 +70,7 @@ def register_api():
     return jsonify({"message": "Registration successful. Please log in.", "user": new_user.to_dict()}), 201
 
 @auth_bp.route("/api/login", methods=["POST"])
+@auth_bp.route("/api/auth/login", methods=["POST"])
 def login_api():
     data = request.get_json() or request.form
     username = data.get("username", "").strip()
@@ -105,6 +107,8 @@ def login_api():
     response = make_response(jsonify({
         "message": "Login successful",
         "token": token,
+        "username": user.username,
+        "role": role_name,
         "user": user.to_dict()
     }))
 
@@ -125,6 +129,7 @@ def logout():
     return response
 
 @auth_bp.route("/api/forgot-password", methods=["POST"])
+@auth_bp.route("/api/auth/forgot-password", methods=["POST"])
 def forgot_password_api():
     data = request.get_json() or request.form
     identifier = data.get("identifier", "").strip()  # Username or Email
@@ -143,7 +148,7 @@ def forgot_password_api():
             ip_address=request.remote_addr,
             details="User not found for password reset."
         )
-        return jsonify({"error": "No account found matching that username or email."}), 440
+        return jsonify({"error": "No account found matching that username or email."}), 404
 
     user.password_hash = hash_password(new_password)
     db.session.commit()
@@ -158,4 +163,3 @@ def forgot_password_api():
     )
 
     return jsonify({"message": "Password reset successful. Please sign in with your new password."}), 200
-
