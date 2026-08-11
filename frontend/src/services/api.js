@@ -33,9 +33,9 @@ export const apiLogin = async (username, password) => {
       body: JSON.stringify({ username, password })
     });
   } catch (err) {
-    // Demo mode fallback if backend is starting up
+    // Fallback if token missing in demo
     if (username.includes('admin') || username.includes('jnnce') || username.includes('demo') || username.includes('@')) {
-      const role = username.includes('analyst') ? 'Analyst' : username.includes('viewer') ? 'Viewer' : 'Admin';
+      const role = username.includes('analyst') ? 'Analyst' : username.includes('user') ? 'User' : 'Admin';
       const mockUser = {
         token: 'demo-jwt-token-jnnce-batch-34',
         user_id: 1,
@@ -63,65 +63,27 @@ export const apiForgotPassword = async (email) => {
 // Dataset Services
 export const apiGetDatasets = async () => {
   try {
-    return await authFetch('/dataset/list');
+    return await authFetch('/datasets');
   } catch (err) {
     return [
-      { id: 1, filename: 'nsl_kdd_benchmark_sample.csv', dataset_type: 'NSL-KDD', row_count: 22544, col_count: 42, file_size_mb: 3.42, is_selected: true, upload_status: 'Completed', uploaded_at: '2026-08-09 10:15' },
-      { id: 2, filename: 'unsw_nb15_benchmark_sample.csv', dataset_type: 'UNSW-NB15', row_count: 175341, col_count: 45, file_size_mb: 18.2, is_selected: false, upload_status: 'Completed', uploaded_at: '2026-08-08 14:30' },
-      { id: 3, filename: 'cicids2017_flow_analysis.csv', dataset_type: 'CICIDS2017', row_count: 52140, col_count: 78, file_size_mb: 8.9, is_selected: false, upload_status: 'Completed', uploaded_at: '2026-08-07 09:12' }
+      { id: 1, filename: 'nsl_kdd_intrusion_dataset.csv', dataset_type: 'NSL-KDD', row_count: 5000, col_count: 42, file_size_mb: 0.62, is_selected: true, upload_status: 'Uploaded' },
+      { id: 2, filename: 'unsw_nb15_network_flow_dataset.csv', dataset_type: 'UNSW-NB15', row_count: 5000, col_count: 43, file_size_mb: 0.78, is_selected: false, upload_status: 'Uploaded' }
     ];
   }
 };
 
-// Model Training & Status Services
+// Real TensorFlow Model Training & Status Services
 export const apiTrainModel = async (hyperparams) => {
-  try {
-    return await authFetch('/model/train', {
-      method: 'POST',
-      body: JSON.stringify(hyperparams)
-    });
-  } catch (err) {
-    return { status: 'training_started', message: 'Asynchronous Keras LSTM training launched.' };
-  }
+  return await authFetch('/train', {
+    method: 'POST',
+    body: JSON.stringify(hyperparams)
+  });
 };
 
 export const apiGetModelStatus = async () => {
-  try {
-    return await authFetch('/model/status');
-  } catch (err) {
-    return {
-      status: 'idle',
-      current_epoch: 10,
-      total_epochs: 10,
-      accuracy: 0.9742,
-      loss: 0.0521,
-      val_accuracy: 0.9685,
-      val_loss: 0.0614
-    };
-  }
+  return await authFetch('/model/status');
 };
 
 export const apiGetModelReport = async () => {
-  try {
-    return await authFetch('/model/report');
-  } catch (err) {
-    return {
-      accuracy: 0.9742,
-      precision: 0.9681,
-      recall: 0.9712,
-      f1_score: 0.9696,
-      model_type: '64-Unit LSTM Neural Network',
-      confusion_matrix: {
-        classes: ['Normal', 'DoS', 'Exploits', 'Generic', 'Fuzzers', 'Reconnaissance'],
-        matrix: [
-          [9600, 40, 10, 5, 2, 3],
-          [20, 4800, 15, 8, 4, 3],
-          [12, 18, 2400, 30, 5, 5],
-          [5, 4, 22, 1800, 10, 9],
-          [3, 2, 6, 12, 1200, 15],
-          [2, 3, 5, 8, 10, 950]
-        ]
-      }
-    };
-  }
+  return await authFetch('/model/report');
 };
