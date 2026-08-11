@@ -5,12 +5,12 @@ export const Navbar = ({ onOpenLogin, onExplore }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { name: 'Home', href: '#hero' },
-    { name: 'College & Batch', href: '#jnnce-info' },
-    { name: 'About NIDS', href: '#about-nids' },
-    { name: 'Zero Trust', href: '#zero-trust' },
+    { name: 'Home', href: '#jnnce-info' },
+    { name: 'Problem & Solution', href: '#problem-and-solution' },
     { name: 'How It Works', href: '#how-it-works' },
-    { name: 'Project', href: '#project' },
+    { name: 'Capabilities', href: '#project-capabilities' },
+    { name: 'Future Extensions', href: '#future-extensions' },
+    { name: 'Institution Details', href: '#academic-details' },
   ];
 
   return (
