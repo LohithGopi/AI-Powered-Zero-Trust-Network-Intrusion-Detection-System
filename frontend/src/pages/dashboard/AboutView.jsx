@@ -192,7 +192,7 @@ export const AboutView = () => {
         </ul>
       </section>
 
-      {/* SECTION 4: FUTURE EXTENSIONS */}
+      {/* SECTION 4: FUTURE ENHANCEMENTS */}
       <section className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#15191C] border border-[#E2E8F0] dark:border-[#252A2E] shadow-sm space-y-6">
         <div className="flex items-center space-x-3 border-b border-slate-100 dark:border-[#252A2E] pb-4">
           <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 border border-amber-200 dark:border-amber-800">
@@ -200,29 +200,26 @@ export const AboutView = () => {
           </div>
           <div>
             <h2 className="text-lg font-bold text-[#172033] dark:text-[#F3F4F1]">
-              4. Future Extensions
+              4. Future Enhancements
             </h2>
             <p className="text-xs text-[#475569] dark:text-[#9FA6A8]">
-              Planned Phase 2 enhancements (Not currently implemented in Phase 1)
+              Planned Phase 2 enhancements for behavioral analytics and system evaluation
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
-            'Real-time network packet inspection.',
-            'Live network traffic monitoring.',
-            'Advanced behavioral analytics.',
-            'Real-time intrusion alerts and notifications.',
-            'Additional AI/ML intrusion detection models.',
-            'Advanced security analytics and visualization.',
-            'Integration with larger-scale network security infrastructure.'
+            'Behavioral Analytics Integration: Analyze user and device behavior patterns to identify anomalies and potential security threats.',
+            'Pattern & Activity Tracking: Track login times, access patterns, and unusual user activities to identify deviations from normal behavior.',
+            'System Performance Evaluation: Evaluate the effectiveness of the proposed system using metrics such as detection accuracy, precision, recall, and false positive rate to measure how correctly the system identifies normal and attack traffic.',
+            'Threat Detection Completeness: Evaluate the correctness and completeness of threat detection using parameters such as F1 score, false positive rate, and false negative rate to measure how often normal traffic is incorrectly classified as an attack.'
           ].map((ext, idx) => (
-            <div key={idx} className="flex items-start space-x-2.5 p-3 rounded-xl bg-amber-50/30 dark:bg-amber-950/10 border border-amber-200/60 dark:border-amber-900/30 text-xs text-[#475569] dark:text-[#9FA6A8]">
-              <span className="p-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 font-mono font-bold text-[10px] shrink-0">
-                P2
+            <div key={idx} className="flex items-start space-x-2.5 p-3.5 rounded-xl bg-amber-50/30 dark:bg-amber-950/10 border border-amber-200/60 dark:border-amber-900/30 text-xs text-[#475569] dark:text-[#9FA6A8]">
+              <span className="p-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 font-mono font-bold text-[10px] shrink-0 mt-0.5">
+                FE {idx + 1}
               </span>
-              <span>{ext}</span>
+              <span className="leading-relaxed">{ext}</span>
             </div>
           ))}
         </div>
