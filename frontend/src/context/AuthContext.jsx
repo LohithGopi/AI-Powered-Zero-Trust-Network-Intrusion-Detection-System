@@ -177,8 +177,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const inferredRole = selectedRole || (data && data.role) || (
-        username.toLowerCase().includes('analyst') ? 'Analyst' :
-        username.toLowerCase().includes('user') ? 'User' : 'Admin'
+        username.toLowerCase().includes('analyst') ? 'Analyst' : 'Admin'
       );
 
       const userObj = {

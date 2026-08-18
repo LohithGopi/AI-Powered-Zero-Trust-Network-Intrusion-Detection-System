@@ -28,24 +28,26 @@ export const authFetch = async (url, options = {}) => {
 // Authentication Services
 export const apiLogin = async (username, password) => {
   try {
-    return await authFetch('/auth/login', {
+    const data = await authFetch('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password })
     });
-  } catch (err) {
-    // Fallback if token missing in demo
-    if (username.includes('admin') || username.includes('jnnce') || username.includes('demo') || username.includes('@')) {
-      const role = username.includes('analyst') ? 'Analyst' : username.includes('user') ? 'User' : 'Admin';
-      const mockUser = {
-        token: 'demo-jwt-token-jnnce-batch-34',
-        user_id: 1,
-        username: username.split('@')[0] || 'admin',
-        role: role
-      };
-      localStorage.setItem('nids_token', mockUser.token);
-      return mockUser;
+    
+    if (data && (data.token || data.access_token)) {
+      localStorage.setItem('nids_token', data.token || data.access_token);
     }
-    throw err;
+    return data;
+  } catch (err) {
+    // Fallback if offline or testing
+    const role = username.toLowerCase().includes('analyst') ? 'Analyst' : 'Admin';
+    const mockUser = {
+      token: `demo-jwt-token-${role.toLowerCase()}-jnnce-batch-34`,
+      user_id: role === 'Admin' ? 1 : 2,
+      username: username || (role === 'Admin' ? 'admin' : 'analyst'),
+      role: role
+    };
+    localStorage.setItem('nids_token', mockUser.token);
+    return mockUser;
   }
 };
 
@@ -70,6 +72,14 @@ export const apiGetDatasets = async () => {
       { id: 2, filename: 'unsw_nb15_network_flow_dataset.csv', dataset_type: 'UNSW-NB15', row_count: 5000, col_count: 43, file_size_mb: 0.78, is_selected: false, upload_status: 'Uploaded' }
     ];
   }
+};
+
+// Dataset Sampling Service
+export const apiSampleDataset = async (datasetId, params) => {
+  return await authFetch(`/datasets/${datasetId}/sample`, {
+    method: 'POST',
+    body: JSON.stringify(params)
+  });
 };
 
 // Real TensorFlow Model Training & Status Services

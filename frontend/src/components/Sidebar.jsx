@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
-  LayoutDashboard, Database, Upload, BarChart2, Cpu, Layers, 
-  FileText, Shield, LogOut, Lock, Monitor, Sun, Moon, Search, User as UserIcon
+  LayoutDashboard, Database, BarChart2, Cpu, Layers, 
+  Shield, LogOut, Info, Sun, Moon, Monitor, User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -10,8 +10,7 @@ export const Sidebar = ({ activeTab, setActiveTab, onLogout, onOpenProfile }) =>
   const { user, role, logout } = useAuth();
   const { themeMode, toggleTheme, isDark } = useTheme();
   const currentRole = role || user?.role || 'Admin';
-
-  const isUserRole = currentRole === 'User';
+  const isAdmin = currentRole === 'Admin';
 
   const handleLogoutClick = () => {
     logout();
@@ -20,14 +19,20 @@ export const Sidebar = ({ activeTab, setActiveTab, onLogout, onOpenProfile }) =>
     }
   };
 
-  const navItems = [
+  // Admin Navigation vs Analyst Navigation (Evaluation Report removed)
+  const navItems = isAdmin ? [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'datasets', label: 'Datasets', icon: Database },
-    { id: 'compare', label: 'Compare', icon: BarChart2 },
-    { id: 'training', label: 'Training', icon: Cpu, isRestricted: isUserRole },
-    { id: 'model-details', label: 'Architecture', icon: Layers },
-    { id: 'reports', label: 'Reports', icon: FileText },
-    { id: 'audit-logs', label: 'Audit Logs', icon: Shield }
+    { id: 'compare', label: 'Compare Datasets', icon: BarChart2 },
+    { id: 'training', label: 'Model Training', icon: Cpu },
+    { id: 'audit-logs', label: 'Audit Logs', icon: Shield },
+    { id: 'about', label: 'About', icon: Info }
+  ] : [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'datasets', label: 'Datasets', icon: Database },
+    { id: 'compare', label: 'Compare Datasets', icon: BarChart2 },
+    { id: 'model-details', label: 'Model Information', icon: Layers },
+    { id: 'about', label: 'About', icon: Info }
   ];
 
   return (
@@ -36,19 +41,17 @@ export const Sidebar = ({ activeTab, setActiveTab, onLogout, onOpenProfile }) =>
       {/* Primary Top Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         
-        {/* Left: College Logo -> Project Name FIRST -> Batch Name SECOND (College Name Removed) */}
+        {/* Left: College Logo -> Project Name FIRST -> Batch Name SECOND */}
         <div 
           onClick={() => setActiveTab('dashboard')}
           className="flex items-center space-x-3 cursor-pointer shrink-0"
         >
-          {/* 1. College Logo (Kept) */}
           <img
             src="/jnnce_logo.png"
             alt="JNNCE Logo"
             className="h-9 w-9 object-contain bg-white rounded-lg p-0.5 shadow-sm"
           />
 
-          {/* 2. Project Name FIRST & 3. Batch Name SECOND */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
             <span className="font-extrabold text-xs sm:text-sm tracking-tight text-white">
               Zero Trust AI-Powered Network Intrusion Detection System
@@ -64,7 +67,11 @@ export const Sidebar = ({ activeTab, setActiveTab, onLogout, onOpenProfile }) =>
         <div className="flex items-center space-x-3 shrink-0">
           
           {/* User Role Badge */}
-          <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-400 border border-emerald-700 hidden md:inline-block">
+          <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded border hidden md:inline-block ${
+            isAdmin 
+              ? 'bg-purple-900/60 text-purple-300 border-purple-700' 
+              : 'bg-blue-900/60 text-blue-300 border-blue-700'
+          }`}>
             [{currentRole.toUpperCase()}]
           </span>
 
@@ -124,9 +131,6 @@ export const Sidebar = ({ activeTab, setActiveTab, onLogout, onOpenProfile }) =>
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 <span>{item.label}</span>
-                {item.isRestricted && (
-                  <Lock className="h-3 w-3 text-amber-400 ml-1" title="Read-Only Permission" />
-                )}
               </button>
             );
           })}

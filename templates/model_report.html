@@ -60,12 +60,14 @@
                         </tr>
                     </thead>
                     <tbody>
+                        {% set max_val = report.max_cm_cell if (report.max_cm_cell is defined and report.max_cm_cell > 0) else 1 %}
                         {% for row in report.confusion_matrix %}
                         {% set outer_loop = loop %}
                         <tr>
                             <td class="fw-bold bg-light text-dark">{{ report.classes[outer_loop.index0] }}</td>
                             {% for cell in row %}
-                            <td style="background-color: rgba(37, 99, 235, {{ (cell / 100) if cell < 100 else 0.85 }}); color: {{ '#FFFFFF' if cell > 15 else '#111827' }};" class="fw-bold fs-6">
+                            {% set intensity = (cell / max_val * 0.85)|round(2) %}
+                            <td style="background-color: rgba(37, 99, 235, {{ intensity }}); color: {{ '#FFFFFF' if (cell / max_val) > 0.35 else '#111827' }};" class="fw-bold fs-6">
                                 {{ cell }}
                             </td>
                             {% endfor %}

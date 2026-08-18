@@ -27,7 +27,7 @@ def register_api():
     username = data.get("username", "").strip()
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
-    role_name = data.get("role", "User")
+    role_name = data.get("role", "Analyst")
 
     if not username or not email or not password:
         return jsonify({"error": "Username, email, and password are required."}), 400
@@ -46,7 +46,7 @@ def register_api():
     # Get requested role
     role = Role.query.filter_by(name=role_name).first()
     if not role:
-        role = Role.query.filter_by(name="User").first()
+        role = Role.query.filter_by(name="Analyst").first()
 
     # Create new user
     new_user = User(
@@ -92,7 +92,7 @@ def login_api():
         return jsonify({"error": "Invalid username or password."}), 401
 
     # Generate JWT Token
-    role_name = user.role.name if user.role else "User"
+    role_name = user.role.name if user.role else "Analyst"
     token = generate_token(user_id=user.id, username=user.username, role=role_name)
 
     log_audit_event(

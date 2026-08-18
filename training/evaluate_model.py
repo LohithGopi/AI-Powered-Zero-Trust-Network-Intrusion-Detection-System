@@ -52,6 +52,17 @@ class ModelEvaluator:
         # Classification Report dict
         clf_report = classification_report(y_test, y_pred, target_names=classes if len(classes) == len(np.unique(y_test)) else None, output_dict=True, zero_division=0)
 
+        # Helper to downsample ROC points evenly up to 100 points without truncation
+        def sample_roc(fpr_arr, tpr_arr):
+            n_pts = len(fpr_arr)
+            if n_pts <= 100:
+                idx_list = range(n_pts)
+            else:
+                idx_list = np.linspace(0, n_pts - 1, num=100, dtype=int)
+            sampled_fpr = [round(float(fpr_arr[i]), 4) for i in idx_list]
+            sampled_tpr = [round(float(tpr_arr[i]), 4) for i in idx_list]
+            return sampled_fpr, sampled_tpr
+
         # ROC Curve generation (for binary or weighted average multi-class)
         roc_data = {"fpr": [], "tpr": [], "auc": 0.0}
         try:
@@ -63,9 +74,10 @@ class ModelEvaluator:
                     pos_probs = y_pred_probs.ravel()
                 fpr, tpr, _ = roc_curve(y_test, pos_probs)
                 roc_auc = float(auc(fpr, tpr))
+                s_fpr, s_tpr = sample_roc(fpr, tpr)
                 roc_data = {
-                    "fpr": [round(x, 4) for x in fpr.tolist()[:100]],
-                    "tpr": [round(x, 4) for x in tpr.tolist()[:100]],
+                    "fpr": s_fpr,
+                    "tpr": s_tpr,
                     "auc": round(roc_auc, 4)
                 }
             else:
@@ -75,20 +87,33 @@ class ModelEvaluator:
                 if y_test_bin.shape[1] == y_pred_probs.shape[1]:
                     fpr, tpr, _ = roc_curve(y_test_bin.ravel(), y_pred_probs.ravel())
                     roc_auc = float(auc(fpr, tpr))
+                    s_fpr, s_tpr = sample_roc(fpr, tpr)
                     roc_data = {
-                        "fpr": [round(x, 4) for x in fpr.tolist()[:100]],
-                        "tpr": [round(x, 4) for x in tpr.tolist()[:100]],
+                        "fpr": s_fpr,
+                        "tpr": s_tpr,
                         "auc": round(roc_auc, 4)
                     }
         except Exception as e:
             logger.warning(f"Could not compute ROC curve data: {str(e)}")
 
+        max_cm_cell = max([max(row) for row in cm]) if (cm and len(cm) > 0 and len(cm[0]) > 0) else 1
+
+        # Compute loss on test partition
+        try:
+            eval_res = model.evaluate(X_test_3d, y_test, verbose=0)
+            test_loss = float(eval_res[0]) if isinstance(eval_res, list) else float(eval_res)
+        except Exception as e:
+            logger.warning(f"Could not calculate test loss: {e}")
+            test_loss = 0.0
+
         report = {
             "accuracy": round(acc, 4),
+            "loss": round(test_loss, 4),
             "precision": round(prec, 4),
             "recall": round(rec, 4),
             "f1_score": round(f1, 4),
             "confusion_matrix": cm,
+            "max_cm_cell": max_cm_cell,
             "classes": classes,
             "classification_report": clf_report,
             "roc_curve": roc_data

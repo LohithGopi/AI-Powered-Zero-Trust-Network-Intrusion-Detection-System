@@ -1,5 +1,7 @@
 import os
 import json
+import time
+import uuid
 import numpy as np
 from flask import Blueprint, request, jsonify, render_template, g
 from config import Config
@@ -47,15 +49,21 @@ def report_page():
     )
 
 @model_bp.route("/api/train", methods=["POST"])
+@model_bp.route("/api/training/start", methods=["POST"])
 @jwt_required
-@require_role(["Admin", "Analyst"])
+@require_role(["Admin"])
 def train_model_api():
-    if training_status["is_training"]:
-        return jsonify({"error": "Model training is already in progress.", "status": training_status}), 400
+    if training_status.get("is_training", False) and training_status.get("status") == "Training in progress":
+        return jsonify({"error": "Model training is currently in progress.", "status": training_status}), 400
 
     data = request.get_json() or {}
     epochs = int(data.get("epochs", 10))
+    batch_size = int(data.get("batch_size", 32))
+    learning_rate = float(data.get("learning_rate", 0.001))
     dataset_id = data.get("dataset_id")
+    training_rows = int(data.get("training_rows", 25000))
+    random_seed = int(data.get("random_seed", 42))
+    sequence_length = int(data.get("sequence_length", 1))
 
     # Get target dataset
     if dataset_id:
@@ -68,64 +76,82 @@ def train_model_api():
     if not ds:
         return jsonify({"error": "No dataset found. Please upload a CSV dataset first."}), 400
 
-
     if not os.path.exists(ds.filepath):
         return jsonify({"error": f"Dataset file not found at path: {ds.filepath}"}), 404
 
     try:
-        # Step 1: Preprocess dataset
-        df = DatasetLoader.load_dataset(ds.filepath, ds.dataset_type)
-        preprocessor = DataPreprocessor()
-        summary, (X_train, X_test, y_train, y_test) = preprocessor.process(df)
+        from flask import current_app
+        app = current_app._get_current_object()
+
+        run_id = start_training_in_background(
+            app=app,
+            dataset_id=ds.id,
+            training_rows=training_rows,
+            epochs=epochs,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            random_seed=random_seed,
+            sequence_length=sequence_length
+        )
 
         log_audit_event(
-            action="DATASET_PREPROCESSED",
+            action="MODEL_TRAINING_START",
             status="SUCCESS",
             user_id=g.user.get("user_id"),
             username=g.user.get("username"),
             ip_address=request.remote_addr,
-            details=f"Preprocessed {ds.filename}. Features: {summary['total_features']}, Classes: {summary['num_classes']}"
-        )
-
-        # Step 2: Start Training in background or synchronous
-        start_training_in_background(X_train, y_train, X_test, y_test, epochs=epochs, dataset_name=ds.filename)
-
-        # Save model history record stub
-        history_entry = ModelHistory(
-            model_name="LSTM Intrusion Detection Model",
-            dataset_name=ds.filename,
-            params_json=json.dumps({"epochs": epochs, "features": summary['total_features'], "architecture": "LSTM(64)->Dropout(0.2)->Dense(32)->Softmax"}),
-            artifact_path=Config.MODEL_FILE_PATH
-        )
-        db.session.add(history_entry)
-        db.session.commit()
-
-        log_audit_event(
-            action="MODEL_TRAINING_STARTED",
-            status="SUCCESS",
-            user_id=g.user.get("user_id"),
-            username=g.user.get("username"),
-            ip_address=request.remote_addr,
-            details=f"Started training LSTM model on '{ds.filename}' for {epochs} epochs."
+            details=f"Started training run '{run_id}' on {ds.filename} ({training_rows:,} rows, seed {random_seed}, {epochs} epochs)."
         )
 
         return jsonify({
-            "message": "Preprocessing completed. Training started in background.",
-            "preprocessing_summary": summary,
-            "status": training_status
+            "message": f"Model training run '{run_id}' initiated successfully.",
+            "run_id": run_id,
+            "status": "Started",
+            "dataset": ds.filename,
+            "training_rows": training_rows,
+            "epochs": epochs
         }), 202
 
     except Exception as e:
         logger.error(f"Failed to start training: {str(e)}")
-        log_audit_event(
-            action="MODEL_TRAINING",
-            status="FAILED",
-            user_id=g.user.get("user_id"),
-            username=g.user.get("username"),
-            ip_address=request.remote_addr,
-            details=f"Training initialization error: {str(e)}"
-        )
-        return jsonify({"error": f"Training failed: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to launch training: {str(e)}"}), 500
+
+
+@model_bp.route("/api/training/<run_id>", methods=["GET"])
+@jwt_required
+def get_training_run_status_api(run_id):
+    mh = ModelHistory.query.filter(ModelHistory.model_name.contains(run_id)).first()
+    if mh:
+        return jsonify(mh.to_dict()), 200
+    
+    if training_status.get("run_id") == run_id:
+        return jsonify(training_status), 200
+
+    return jsonify({"error": f"Training run '{run_id}' not found."}), 404
+
+
+@model_bp.route("/api/training/<run_id>/history", methods=["GET"])
+@jwt_required
+def get_training_run_history_api(run_id):
+    if training_status.get("run_id") == run_id:
+        return jsonify({
+            "run_id": run_id,
+            "epoch_history": training_status.get("epoch_history", [])
+        }), 200
+
+    mh = ModelHistory.query.filter(ModelHistory.model_name.contains(run_id)).first()
+    if mh and mh.params_json:
+        try:
+            params = json.loads(mh.params_json)
+            artifact_dir = params.get("artifact_dir")
+            if artifact_dir and os.path.exists(os.path.join(artifact_dir, "training_metadata.json")):
+                with open(os.path.join(artifact_dir, "training_metadata.json"), "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                return jsonify(meta), 200
+        except Exception as e:
+            logger.warning(f"Error reading artifact history: {e}")
+
+    return jsonify({"run_id": run_id, "epoch_history": []}), 200
 
 @model_bp.route("/api/model/status", methods=["GET"])
 @jwt_required
@@ -144,4 +170,3 @@ def get_model_report_api():
         return jsonify(report), 200
     except Exception as e:
         return jsonify({"error": f"Failed to load evaluation report: {str(e)}"}), 500
-

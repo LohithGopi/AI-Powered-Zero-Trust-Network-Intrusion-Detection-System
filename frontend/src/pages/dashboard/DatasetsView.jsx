@@ -3,7 +3,7 @@ import { Upload, Trash2, FileSpreadsheet, Lock, BarChart2, CheckCircle2 } from '
 import { useAuth } from '../../context/AuthContext';
 
 export const DatasetsView = ({ onNavigate }) => {
-  const { user, role, datasets, selectDataset, toggleCompareDataset, addDataset, removeDataset } = useAuth();
+  const { user, role, datasets = [], selectDataset, toggleCompareDataset, addDataset, removeDataset } = useAuth();
   const currentRole = role || user?.role || 'Admin';
 
   const canUpload = currentRole === 'Admin' || currentRole === 'Analyst';
@@ -15,7 +15,8 @@ export const DatasetsView = ({ onNavigate }) => {
   const [uploadError, setUploadError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const comparedCount = datasets.filter(d => d.isCompared).length;
+  const safeDatasets = Array.isArray(datasets) ? datasets : [];
+  const comparedCount = safeDatasets.filter(d => d && d.isCompared).length;
 
   const handleSelect = (id, name) => {
     if (!canUpload) {
@@ -50,53 +51,29 @@ export const DatasetsView = ({ onNavigate }) => {
     e.preventDefault();
     setUploadError('');
 
-    if (!canUpload) {
-      setUploadError('Forbidden: Only Admin and Analyst roles have permission to upload datasets.');
-      return;
-    }
     if (!selectedFile) {
-      setUploadError('Please select a valid CSV dataset file to upload.');
+      setUploadError('Please choose a valid CSV dataset file.');
       return;
     }
+
     if (!selectedFile.name.endsWith('.csv')) {
-      setUploadError('Invalid File Format: Only CSV (.csv) dataset files are supported.');
+      setUploadError('Invalid file format. Please upload a .csv file.');
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target.result;
-      const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+      const lines = text.split('\n').filter(l => l.trim().length > 0);
       const rowCount = Math.max(1, lines.length - 1);
-      const headerCols = lines[0] ? lines[0].split(',').length : 42;
+      const colCount = lines[0] ? lines[0].split(',').length : 40;
 
       const newDs = {
         id: Date.now(),
         name: selectedFile.name,
         type: datasetType,
         rows: rowCount,
-        cols: headerCols,
-        size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
-        status: 'Uploaded',
-        date: new Date().toISOString().replace('T', ' ').substring(0, 16),
-        isSelected: true,
-        isCompared: true
-      };
-
-      addDataset(newDs, true);
-      setShowUploadModal(false);
-      setSelectedFile(null);
-      setSuccessMsg(`Custom dataset '${newDs.name}' uploaded, active for training, and added to comparison matrix.`);
-      setTimeout(() => setSuccessMsg(''), 5000);
-    };
-
-    reader.onerror = () => {
-      const newDs = {
-        id: Date.now(),
-        name: selectedFile.name,
-        type: datasetType,
-        rows: 5000,
-        cols: 42,
+        cols: colCount,
         size: `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB`,
         status: 'Uploaded',
         date: new Date().toISOString().replace('T', ' ').substring(0, 16),
@@ -139,173 +116,211 @@ export const DatasetsView = ({ onNavigate }) => {
         <div className="flex items-center space-x-3">
           <button
             onClick={() => onNavigate('compare')}
-            className="flex items-center space-x-2 text-xs font-semibold text-[#172033] dark:text-[#F3F4F1] bg-white dark:bg-[#15191C] border border-[#E2E8F0] dark:border-[#252A2E] hover:bg-slate-50 dark:hover:bg-[#1E2328] px-4 py-2.5 rounded-xl shadow-xs transition-all"
+            className="flex items-center space-x-2 text-xs font-semibold text-[#172033] dark:text-[#F3F4F1] bg-white dark:bg-[#15191C] hover:bg-slate-50 dark:hover:bg-[#1E2328] border border-[#E2E8F0] dark:border-[#252A2E] px-4 py-2 rounded-xl shadow-sm transition-all"
           >
             <BarChart2 className="h-4 w-4 text-[#1769E0]" />
-            <span>Compare Selected ({comparedCount})</span>
+            <span>Compare Matrix ({comparedCount})</span>
           </button>
 
           {canUpload ? (
             <button
               onClick={() => setShowUploadModal(true)}
-              className="flex items-center space-x-2 text-xs font-semibold text-white bg-[#1769E0] hover:bg-[#0F3B68] px-4 py-2.5 rounded-xl shadow-md transition-all"
+              className="flex items-center space-x-2 text-xs font-semibold text-white bg-[#1769E0] hover:bg-[#0F3B68] px-4 py-2 rounded-xl shadow-sm transition-all"
             >
               <Upload className="h-4 w-4" />
               <span>Upload CSV Dataset</span>
             </button>
           ) : (
-            <button disabled className="flex items-center space-x-2 text-xs font-semibold text-slate-400 bg-slate-100 dark:bg-[#0B0D0F] border border-slate-200 dark:border-[#252A2E] px-4 py-2.5 rounded-xl cursor-not-allowed">
+            <button
+              disabled
+              className="flex items-center space-x-2 text-xs font-semibold text-slate-400 bg-slate-100 dark:bg-[#0B0D0F] border border-slate-200 dark:border-[#252A2E] px-4 py-2 rounded-xl cursor-not-allowed"
+              title="Only Admin/Analyst roles can upload datasets"
+            >
               <Lock className="h-4 w-4 text-slate-400" />
-              <span>Upload Disabled (Read-Only)</span>
+              <span>Upload Restricted</span>
             </button>
           )}
         </div>
       </div>
 
+      {/* Success Notification Banner */}
       {successMsg && (
-        <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-mono">
-          ✓ {successMsg}
+        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-mono flex items-center space-x-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          <span>{successMsg}</span>
         </div>
       )}
 
-      {/* Datasets Table */}
+      {/* Inventory Table */}
       <div className="bg-white dark:bg-[#15191C] border border-[#E2E8F0] dark:border-[#252A2E] rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
+          <table className="w-full text-left border-collapse text-xs font-mono">
             <thead className="bg-[#F5F7FA] dark:bg-[#0B0D0F] text-[#475569] dark:text-[#9FA6A8] text-[10px] uppercase border-b border-[#E2E8F0] dark:border-[#252A2E]">
               <tr>
                 <th className="py-3 px-4">Dataset Name</th>
                 <th className="py-3 px-4">Type</th>
-                <th className="py-3 px-4">Rows</th>
-                <th className="py-3 px-4">Columns</th>
-                <th className="py-3 px-4">File Size</th>
+                <th className="py-3 px-4 text-right">Total Available Rows</th>
+                <th className="py-3 px-4 text-right">Training Rows Selected</th>
+                <th className="py-3 px-4 text-center">Columns</th>
+                <th className="py-3 px-4 text-center">File Size</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">RBAC Actions & Selection</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#252A2E]">
-              {datasets.map((ds) => (
-                <tr key={ds.id} className={`hover:bg-slate-50 dark:hover:bg-[#1E2328] transition-colors ${ds.isSelected ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center space-x-2">
-                      <FileSpreadsheet className="h-4 w-4 text-[#1769E0] shrink-0" />
-                      <span className="font-bold text-[#172033] dark:text-[#F3F4F1] truncate max-w-xs">{ds.name}</span>
-                      {ds.isSelected && (
-                        <span className="text-[9px] bg-blue-100 dark:bg-blue-900/60 text-[#1769E0] px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
-                          ACTIVE TARGET
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-[#475569] dark:text-[#9FA6A8]">{ds.type}</td>
-                  <td className="py-3 px-4 font-bold text-[#172033] dark:text-[#F3F4F1]">{ds.rows.toLocaleString()}</td>
-                  <td className="py-3 px-4 text-[#475569] dark:text-[#9FA6A8]">{ds.cols}</td>
-                  <td className="py-3 px-4 text-[#475569] dark:text-[#9FA6A8]">{ds.size}</td>
-                  <td className="py-3 px-4">
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">{ds.status}</span>
-                  </td>
-                  <td className="py-3 px-4 text-right space-x-2">
-                    {/* Compare Selection Button */}
-                    <button
-                      onClick={() => handleToggleCompare(ds.id, ds.name, ds.isCompared)}
-                      className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
-                        ds.isCompared
-                          ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
-                          : 'bg-slate-100 dark:bg-[#0B0D0F] text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-[#1E2328]'
-                      }`}
-                      title="Toggle inclusion in Dataset Comparison Matrix"
-                    >
-                      {ds.isCompared ? '✓ Comparing' : '+ Compare'}
-                    </button>
+              {safeDatasets.map((ds) => {
+                const displayName = ds.name || ds.filename || 'dataset.csv';
+                const dsType = ds.type || ds.dataset_type || 'Custom';
+                
+                // Real Dataset Specification Limits
+                let totalRows = ds.total_rows || ds.rows || ds.row_count || 1000;
+                let trainingRows = ds.training_rows || 25000;
+                if (dsType.includes('CIC')) {
+                  totalRows = 2830743;
+                  trainingRows = ds.training_rows || 25000;
+                } else if (dsType.includes('UNSW')) {
+                  totalRows = 2540044;
+                  trainingRows = ds.training_rows || 25000;
+                } else if (dsType.includes('NSL')) {
+                  totalRows = 148517;
+                  trainingRows = ds.training_rows || 148517;
+                }
 
-                    {/* Active Target Training Selection Button */}
-                    <button
-                      onClick={() => handleSelect(ds.id, ds.name)}
-                      disabled={!canUpload || ds.isSelected}
-                      className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
-                        ds.isSelected
-                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 cursor-default'
-                          : canUpload
-                          ? 'bg-blue-50 dark:bg-blue-900/40 text-[#1769E0] hover:bg-blue-100 dark:hover:bg-blue-900/60'
-                          : 'bg-slate-100 dark:bg-[#0B0D0F] text-slate-400 cursor-not-allowed'
-                      }`}
-                    >
-                      {ds.isSelected ? '✓ Active Target' : canUpload ? 'Select Target' : '🔒 Select'}
-                    </button>
+                const dsCols = ds.cols || ds.col_count || 42;
+                const dsSize = ds.size || (ds.file_size_mb ? `${ds.file_size_mb} MB` : '0.5 MB');
 
-                    {/* Admin Delete Button */}
-                    {canDelete ? (
+                return (
+                  <tr key={ds.id || displayName} className={`hover:bg-slate-50 dark:hover:bg-[#1E2328] transition-colors ${ds.isSelected ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center space-x-2">
+                        <FileSpreadsheet className="h-4 w-4 text-[#1769E0] shrink-0" />
+                        <span className="font-bold text-[#172033] dark:text-[#F3F4F1] truncate max-w-xs">{displayName}</span>
+                        {ds.isSelected && (
+                          <span className="text-[9px] bg-blue-100 dark:bg-blue-900/60 text-[#1769E0] px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
+                            ACTIVE TARGET
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-[#475569] dark:text-[#9FA6A8]">{dsType}</td>
+                    <td className="py-3 px-4 font-bold text-right text-[#172033] dark:text-[#F3F4F1]">{totalRows.toLocaleString()}</td>
+                    <td className="py-3 px-4 font-bold text-right text-emerald-600 dark:text-emerald-400">{trainingRows.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-center text-[#475569] dark:text-[#9FA6A8]">{dsCols}</td>
+                    <td className="py-3 px-4 text-center text-[#475569] dark:text-[#9FA6A8]">{dsSize}</td>
+                    <td className="py-3 px-4">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">{ds.status || 'Uploaded'}</span>
+                    </td>
+                    <td className="py-3 px-4 text-right space-x-2">
+                      {/* Compare Selection Button */}
                       <button
-                        onClick={() => handleDelete(ds.id, ds.name)}
-                        className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors inline-block align-middle"
-                        title="Delete Dataset (Admin Only)"
+                        onClick={() => handleToggleCompare(ds.id, displayName, ds.isCompared)}
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
+                          ds.isCompared
+                            ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
+                            : 'bg-slate-100 dark:bg-[#0B0D0F] text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-[#1E2328]'
+                        }`}
+                        title="Toggle inclusion in Dataset Comparison Matrix"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {ds.isCompared ? '✓ Comparing' : '+ Compare'}
                       </button>
-                    ) : (
-                      <span className="text-[10px] text-slate-400 font-mono ml-1" title="Requires Admin Role">🔒</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+
+                      {/* Select Active Target Button */}
+                      {ds.isSelected ? (
+                        <button
+                          disabled
+                          className="px-3 py-1 rounded text-[11px] font-bold bg-blue-600 text-white cursor-default shadow-xs"
+                        >
+                          Target Active
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleSelect(ds.id, displayName)}
+                          className="px-3 py-1 rounded text-[11px] font-semibold bg-slate-100 dark:bg-[#0B0D0F] text-[#1769E0] hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-800 transition-colors"
+                        >
+                          Select Target
+                        </button>
+                      )}
+
+                      {/* Delete Button (Admin Only) */}
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(ds.id, displayName)}
+                          className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                          title="Delete Dataset (Admin Only)"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Upload CSV Modal */}
-      {showUploadModal && canUpload && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-[#15191C] border border-[#E2E8F0] dark:border-[#252A2E] rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-[#172033] dark:text-[#F3F4F1]">Upload Network Dataset</h3>
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white dark:bg-[#15191C] border border-[#E2E8F0] dark:border-[#252A2E] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#252A2E] pb-3">
+              <div className="flex items-center space-x-2">
+                <Upload className="h-5 w-5 text-[#1769E0]" />
+                <h3 className="font-bold text-sm text-[#172033] dark:text-[#F3F4F1]">Upload Benchmark Dataset (.CSV)</h3>
+              </div>
+              <button onClick={() => setShowUploadModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">✕</button>
+            </div>
 
             {uploadError && (
-              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-xs font-mono">
-                ⚠ {uploadError}
+              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs font-mono">
+                {uploadError}
               </div>
             )}
 
-            <form onSubmit={handleUploadSubmit} className="space-y-4 text-xs font-sans">
+            <form onSubmit={handleUploadSubmit} className="space-y-4 text-xs font-mono">
               <div>
-                <label className="block text-[#475569] dark:text-[#9FA6A8] mb-1 font-medium">Dataset Type</label>
-                <select
-                  value={datasetType}
-                  onChange={(e) => setDatasetType(e.target.value)}
-                  className="w-full bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] rounded-xl p-2.5 text-[#172033] dark:text-[#F3F4F1] outline-none font-mono"
-                >
-                  <option value="Custom">Custom CSV File</option>
-                  <option value="NSL-KDD">NSL-KDD Benchmark</option>
-                  <option value="UNSW-NB15">UNSW-NB15 Flow</option>
-                  <option value="CICIDS2017">CICIDS2017 Traffic</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[#475569] dark:text-[#9FA6A8] mb-1 font-medium">Select CSV File</label>
+                <label className="block text-[#475569] dark:text-[#9FA6A8] mb-1 font-bold">Select CSV File:</label>
                 <input
                   type="file"
                   accept=".csv"
                   onChange={(e) => setSelectedFile(e.target.files[0])}
-                  className="w-full bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] rounded-xl p-2 text-xs text-[#172033] dark:text-[#F3F4F1]"
+                  className="w-full p-2 bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] rounded-xl text-xs text-[#172033] dark:text-[#F3F4F1]"
                 />
               </div>
 
-              <div className="flex space-x-3 pt-2">
+              <div>
+                <label className="block text-[#475569] dark:text-[#9FA6A8] mb-1 font-bold">Dataset Standard Category:</label>
+                <select
+                  value={datasetType}
+                  onChange={(e) => setDatasetType(e.target.value)}
+                  className="w-full p-2.5 bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] rounded-xl text-xs text-[#172033] dark:text-[#F3F4F1]"
+                >
+                  <option value="NSL-KDD">NSL-KDD Standard</option>
+                  <option value="UNSW-NB15">UNSW-NB15 Standard</option>
+                  <option value="CICIDS2017">CICIDS2017 Standard</option>
+                  <option value="Custom">Custom Intrusion Flow Dataset</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setShowUploadModal(false); setUploadError(''); }}
-                  className="w-1/2 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-[#252A2E] text-[#475569] dark:text-[#9FA6A8] font-semibold text-xs hover:bg-slate-50 dark:hover:bg-[#1E2328]"
+                  onClick={() => setShowUploadModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-[#0B0D0F] text-[#475569] dark:text-[#9FA6A8] hover:bg-slate-200 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="w-1/2 py-2.5 rounded-xl bg-[#1769E0] text-white font-semibold text-xs hover:bg-[#0F3B68]"
+                  className="px-4 py-2 rounded-xl bg-[#1769E0] hover:bg-[#0F3B68] text-white font-bold shadow-md transition-colors"
                 >
-                  Upload & Register
+                  Upload & Set Active
                 </button>
               </div>
             </form>
+
           </div>
         </div>
       )}

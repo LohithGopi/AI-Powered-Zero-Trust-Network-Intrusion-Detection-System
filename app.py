@@ -33,6 +33,14 @@ def create_app():
             if "error" not in payload:
                 g.user = payload
 
+    @app.after_request
+    def add_no_cache_headers(response):
+        """Ensure browser loads latest React build bundle without stale caching."""
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
     @app.route("/")
     def index():
         """Serve application directly on app.py (http://127.0.0.1:5000)."""

@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Database, FileSpreadsheet, Server, Cpu, CheckCircle2, 
-  Clock, ArrowRight, Upload, BarChart2, Play, FileText, Activity, GraduationCap, Award, AlertCircle
+  Clock, ArrowRight, Upload, BarChart2, Play, FileText, Activity, GraduationCap, Award, AlertCircle, Info
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -9,8 +9,8 @@ export const OverviewView = ({ onNavigate }) => {
   const { modelStatus, modelMetrics, datasets, activeDataset } = useAuth();
   const isTrained = modelStatus === 'Trained';
   const uploadedCount = datasets?.length || 0;
-  const activeName = activeDataset?.name || 'N/A';
-  const activeRows = activeDataset?.rows || 0;
+  const activeName = activeDataset?.name || activeDataset?.filename || 'nsl_kdd_intrusion_dataset.csv';
+  const activeRows = activeDataset?.rows || activeDataset?.row_count || 1010;
 
   return (
     <div className="space-y-8">
@@ -82,7 +82,9 @@ export const OverviewView = ({ onNavigate }) => {
             <Database className="h-4 w-4 text-[#1769E0]" />
           </div>
           <div className="text-2xl font-bold font-mono text-[#172033] dark:text-[#F3F4F1]">{uploadedCount} {uploadedCount === 1 ? 'File' : 'Files'}</div>
-          <div className="text-[10px] text-[#475569] dark:text-[#9FA6A8] mt-1">{datasets.map(d => d.type).join(', ')}</div>
+          <div className="text-[10px] text-[#475569] dark:text-[#9FA6A8] mt-1 font-mono font-semibold">
+            {(datasets || []).map(d => d.type || d.dataset_type || 'NSL-KDD').filter(Boolean).join(', ') || 'NSL-KDD'}
+          </div>
         </div>
 
         {/* 2. Active Dataset */}
@@ -221,12 +223,12 @@ export const OverviewView = ({ onNavigate }) => {
           </button>
 
           <button
-            onClick={() => onNavigate('reports')}
+            onClick={() => onNavigate('about')}
             className="p-4 rounded-xl bg-[#F5F7FA] dark:bg-[#0B0D0F] hover:bg-blue-50 dark:hover:bg-[#1E2328] border border-[#E2E8F0] dark:border-[#252A2E] hover:border-blue-200 transition-all text-left group"
           >
-            <FileText className="h-5 w-5 text-[#1769E0] mb-2" />
-            <div className="text-xs font-bold text-[#172033] dark:text-[#F3F4F1] group-hover:text-[#1769E0]">View Evaluation</div>
-            <div className="text-[10px] text-[#475569] dark:text-[#9FA6A8] mt-0.5">Inspect accuracy, precision & confusion matrix</div>
+            <Info className="h-5 w-5 text-[#1769E0] mb-2" />
+            <div className="text-xs font-bold text-[#172033] dark:text-[#F3F4F1] group-hover:text-[#1769E0]">About System</div>
+            <div className="text-[10px] text-[#475569] dark:text-[#9FA6A8] mt-0.5">Architecture, workflow & institution details</div>
           </button>
 
         </div>

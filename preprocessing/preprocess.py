@@ -1,4 +1,5 @@
 import os
+import json
 import joblib
 import pandas as pd
 import numpy as np
@@ -6,32 +7,32 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from config import Config
 from utils.logger import logger
-from preprocessing.feature_engineering import FeatureEngineer
 
-class DataPreprocessor:
-    """End-to-end data preprocessing pipeline."""
+class BaseNIDSPreprocessor:
+    """Base dataset preprocessor with strict data-leakage prevention."""
 
-    def __init__(self, scaler_path=Config.SCALER_FILE_PATH, encoder_path=Config.ENCODER_FILE_PATH):
-        self.scaler_path = scaler_path
-        self.encoder_path = encoder_path
+    def __init__(self, artifact_dir=None):
+        self.artifact_dir = artifact_dir or Config.MODEL_DIR
         self.scaler = StandardScaler()
         self.label_encoder = LabelEncoder()
+        self.feature_encoders = {}
+        self.feature_names = []
 
-    def process(self, df: pd.DataFrame) -> tuple[dict, tuple]:
-        """Perform full preprocessing pipeline on input DataFrame."""
-        original_rows = len(df)
-        original_cols = len(df.columns)
+    def clean_inf_and_nulls(self, df: pd.DataFrame) -> tuple[pd.DataFrame, int, int, int]:
+        """Detect and handle infinite values, missing values, and duplicates."""
+        orig_rows = len(df)
 
-        # 1. Feature Engineering
-        df = FeatureEngineer.engineer_features(df)
+        # 1. Replace inf and -inf with NaN
+        inf_count = int(np.isinf(df.select_dtypes(include=[np.number])).sum().sum())
+        df = df.replace([np.inf, -np.inf], np.nan)
 
-        # 2. Remove Duplicates
+        # 2. Duplicate detection & removal BEFORE split
         df = df.drop_duplicates().reset_index(drop=True)
-        rows_after_dedup = len(df)
-        duplicate_count = original_rows - rows_after_dedup
+        clean_rows = len(df)
+        dup_count = orig_rows - clean_rows
 
-        # 3. Handle Missing Values
-        missing_count = df.isnull().sum().sum()
+        # 3. Missing values count & imputation
+        missing_count = int(df.isnull().sum().sum())
         for col in df.columns:
             if df[col].isnull().sum() > 0:
                 if df[col].dtype == object or df[col].dtype.name == 'category':
@@ -41,64 +42,221 @@ class DataPreprocessor:
                     median_val = df[col].median() if not pd.isna(df[col].median()) else 0.0
                     df[col] = df[col].fillna(median_val)
 
-        # 4. Target Label Encoding
-        if "label" not in df.columns:
-            raise KeyError("Target 'label' column is missing from dataset.")
+        return df, dup_count, missing_count, inf_count
 
-        y_raw = df["label"].astype(str).values
+    def process(self, df: pd.DataFrame, target_col: str = None) -> tuple[dict, tuple]:
+        raise NotImplementedError("Subclasses must implement process()")
+
+
+class CICIDS2017Preprocessor(BaseNIDSPreprocessor):
+    """Dataset-specific preprocessing for CIC-IDS2017 benchmark dataset."""
+
+    def process(self, df: pd.DataFrame, target_col: str = None) -> tuple[dict, tuple]:
+        # Strip column whitespace
+        df.columns = df.columns.str.strip()
+
+        # Target column identification
+        if not target_col:
+            for c in ["Label", "label", "target", "Class"]:
+                if c in df.columns:
+                    target_col = c
+                    break
+        if not target_col:
+            target_col = df.columns[-1]
+
+        # Clean inf, nulls, duplicates
+        df, dup_count, missing_count, inf_count = self.clean_inf_and_nulls(df)
+
+        # Drop non-predictive IP metadata columns if present
+        drop_cols = ["Flow ID", "Source IP", "Source Port", "Destination IP", "Timestamp"]
+        df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+
+        # Target Label Encoding
+        y_raw = df[target_col].astype(str).values
         y_encoded = self.label_encoder.fit_transform(y_raw)
-        
-        # Save LabelEncoder artifact
-        os.makedirs(os.path.dirname(self.encoder_path), exist_ok=True)
-        joblib.dump(self.label_encoder, self.encoder_path)
-        logger.info(f"Saved LabelEncoder to {self.encoder_path} with classes: {self.label_encoder.classes_}")
 
-        # Drop label column from features
-        X_df = df.drop(columns=["label"])
+        X_df = df.drop(columns=[target_col])
+        self.feature_names = X_df.columns.tolist()
 
-        # 5. Categorical Feature Encoding (Ordinal/Label encoding per feature)
-        categorical_cols = X_df.select_dtypes(include=['object', 'category']).columns.tolist()
-        features_encoded_count = len(categorical_cols)
-
-        for col in categorical_cols:
+        # Categorical Column Encoding
+        cat_cols = X_df.select_dtypes(include=['object', 'category']).columns.tolist()
+        for col in cat_cols:
             fe = LabelEncoder()
             X_df[col] = fe.fit_transform(X_df[col].astype(str))
+            self.feature_encoders[col] = fe
 
-        # Ensure all columns numeric and finite
         X_df = X_df.apply(pd.to_numeric, errors='coerce').fillna(0.0)
 
-        # 6. Normalize Numerical Features using StandardScaler
-        X_scaled = self.scaler.fit_transform(X_df.values)
-        
-        # Save StandardScaler artifact
-        os.makedirs(os.path.dirname(self.scaler_path), exist_ok=True)
-        joblib.dump(self.scaler, self.scaler_path)
-        logger.info(f"Saved StandardScaler to {self.scaler_path}")
-
-        # 7. Train / Test Split
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_scaled, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded if len(np.unique(y_encoded)) > 1 else None
+        # Train / Validation / Test Split BEFORE scaling to prevent leakage
+        X_train_raw, X_temp, y_train, y_temp = train_test_split(
+            X_df.values, y_encoded, test_size=0.30, random_state=42, stratify=y_encoded if len(np.unique(y_encoded)) > 1 else None
+        )
+        X_val_raw, X_test_raw, y_val, y_test = train_test_split(
+            X_temp, y_temp, test_size=0.50, random_state=42, stratify=y_temp if len(np.unique(y_temp)) > 1 else None
         )
 
-        # 8. Save Processed Files
-        processed_dir = Config.DATASET_PROCESSED_DIR
-        os.makedirs(processed_dir, exist_ok=True)
-        np.savez_compressed(
-            os.path.join(processed_dir, "processed_data.npz"),
-            X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test,
-            feature_names=X_df.columns.values, classes=self.label_encoder.classes_
-        )
+        # Fit StandardScaler ONLY on X_train
+        X_train = self.scaler.fit_transform(X_train_raw)
+        X_val = self.scaler.transform(X_val_raw)
+        X_test = self.scaler.transform(X_test_raw)
 
         summary = {
-            "original_rows": original_rows,
-            "remaining_rows": rows_after_dedup,
-            "duplicates_removed": duplicate_count,
-            "missing_values_handled": int(missing_count),
-            "features_encoded": features_encoded_count,
+            "dataset_type": "CIC-IDS2017",
+            "duplicate_rows_removed": dup_count,
+            "missing_values_handled": missing_count,
+            "infinite_values_handled": inf_count,
+            "training_rows": len(X_train),
+            "validation_rows": len(X_val),
+            "testing_rows": len(X_test),
             "total_features": X_df.shape[1],
             "num_classes": len(self.label_encoder.classes_),
             "classes": self.label_encoder.classes_.tolist(),
-            "status": "Ready for Training"
+            "target_col": target_col
         }
 
-        return summary, (X_train, X_test, y_train, y_test)
+        return summary, (X_train, y_train, X_val, y_val, X_test, y_test)
+
+
+class UNSWNB15Preprocessor(BaseNIDSPreprocessor):
+    """Dataset-specific preprocessing for UNSW-NB15 benchmark dataset."""
+
+    def process(self, df: pd.DataFrame, target_col: str = None) -> tuple[dict, tuple]:
+        df.columns = df.columns.str.strip()
+
+        if not target_col:
+            for c in ["attack_cat", "label", "Label", "target"]:
+                if c in df.columns:
+                    target_col = c
+                    break
+        if not target_col:
+            target_col = df.columns[-1]
+
+        # Clean inf, nulls, duplicates
+        df, dup_count, missing_count, inf_count = self.clean_inf_and_nulls(df)
+
+        # Drop id column if present
+        if "id" in df.columns:
+            df = df.drop(columns=["id"])
+
+        y_raw = df[target_col].astype(str).values
+        y_encoded = self.label_encoder.fit_transform(y_raw)
+
+        X_df = df.drop(columns=[target_col])
+        if "label" in X_df.columns and target_col == "attack_cat":
+            X_df = X_df.drop(columns=["label"])
+
+        self.feature_names = X_df.columns.tolist()
+
+        cat_cols = X_df.select_dtypes(include=['object', 'category']).columns.tolist()
+        for col in cat_cols:
+            fe = LabelEncoder()
+            X_df[col] = fe.fit_transform(X_df[col].astype(str))
+            self.feature_encoders[col] = fe
+
+        X_df = X_df.apply(pd.to_numeric, errors='coerce').fillna(0.0)
+
+        X_train_raw, X_temp, y_train, y_temp = train_test_split(
+            X_df.values, y_encoded, test_size=0.30, random_state=42, stratify=y_encoded if len(np.unique(y_encoded)) > 1 else None
+        )
+        X_val_raw, X_test_raw, y_val, y_test = train_test_split(
+            X_temp, y_temp, test_size=0.50, random_state=42, stratify=y_temp if len(np.unique(y_temp)) > 1 else None
+        )
+
+        X_train = self.scaler.fit_transform(X_train_raw)
+        X_val = self.scaler.transform(X_val_raw)
+        X_test = self.scaler.transform(X_test_raw)
+
+        summary = {
+            "dataset_type": "UNSW-NB15",
+            "duplicate_rows_removed": dup_count,
+            "missing_values_handled": missing_count,
+            "infinite_values_handled": inf_count,
+            "training_rows": len(X_train),
+            "validation_rows": len(X_val),
+            "testing_rows": len(X_test),
+            "total_features": X_df.shape[1],
+            "num_classes": len(self.label_encoder.classes_),
+            "classes": self.label_encoder.classes_.tolist(),
+            "target_col": target_col
+        }
+
+        return summary, (X_train, y_train, X_val, y_val, X_test, y_test)
+
+
+class NSLKDDPreprocessor(BaseNIDSPreprocessor):
+    """Dataset-specific preprocessing for NSL-KDD benchmark dataset."""
+
+    def process(self, df: pd.DataFrame, target_col: str = None) -> tuple[dict, tuple]:
+        df.columns = df.columns.str.strip()
+
+        if not target_col:
+            for c in ["label", "Label", "target", "class"]:
+                if c in df.columns:
+                    target_col = c
+                    break
+        if not target_col:
+            target_col = df.columns[-1]
+
+        df, dup_count, missing_count, inf_count = self.clean_inf_and_nulls(df)
+
+        y_raw = df[target_col].astype(str).values
+        y_encoded = self.label_encoder.fit_transform(y_raw)
+
+        X_df = df.drop(columns=[target_col])
+        self.feature_names = X_df.columns.tolist()
+
+        cat_cols = X_df.select_dtypes(include=['object', 'category']).columns.tolist()
+        for col in cat_cols:
+            fe = LabelEncoder()
+            X_df[col] = fe.fit_transform(X_df[col].astype(str))
+            self.feature_encoders[col] = fe
+
+        X_df = X_df.apply(pd.to_numeric, errors='coerce').fillna(0.0)
+
+        X_train_raw, X_temp, y_train, y_temp = train_test_split(
+            X_df.values, y_encoded, test_size=0.30, random_state=42, stratify=y_encoded if len(np.unique(y_encoded)) > 1 else None
+        )
+        X_val_raw, X_test_raw, y_val, y_test = train_test_split(
+            X_temp, y_temp, test_size=0.50, random_state=42, stratify=y_temp if len(np.unique(y_temp)) > 1 else None
+        )
+
+        X_train = self.scaler.fit_transform(X_train_raw)
+        X_val = self.scaler.transform(X_val_raw)
+        X_test = self.scaler.transform(X_test_raw)
+
+        summary = {
+            "dataset_type": "NSL-KDD",
+            "duplicate_rows_removed": dup_count,
+            "missing_values_handled": missing_count,
+            "infinite_values_handled": inf_count,
+            "training_rows": len(X_train),
+            "validation_rows": len(X_val),
+            "testing_rows": len(X_test),
+            "total_features": X_df.shape[1],
+            "num_classes": len(self.label_encoder.classes_),
+            "classes": self.label_encoder.classes_.tolist(),
+            "target_col": target_col
+        }
+
+        return summary, (X_train, y_train, X_val, y_val, X_test, y_test)
+
+
+class DataPreprocessor:
+    """Preprocessor Factory providing dataset-specific preprocessing pipelines."""
+
+    @staticmethod
+    def get_preprocessor(dataset_type: str, artifact_dir: str = None) -> BaseNIDSPreprocessor:
+        dt = (dataset_type or "").upper()
+        if "CIC" in dt:
+            return CICIDS2017Preprocessor(artifact_dir=artifact_dir)
+        elif "UNSW" in dt:
+            return UNSWNB15Preprocessor(artifact_dir=artifact_dir)
+        else:
+            return NSLKDDPreprocessor(artifact_dir=artifact_dir)
+
+    def process(self, df: pd.DataFrame) -> tuple[dict, tuple]:
+        """Legacy compatibility wrapper."""
+        prep = NSLKDDPreprocessor()
+        summary, (X_train, y_train, X_val, y_val, X_test, y_test) = prep.process(df)
+        legacy_tuple = (X_train, X_test, y_train, y_test)
+        return summary, legacy_tuple

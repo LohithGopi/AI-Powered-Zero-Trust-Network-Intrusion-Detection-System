@@ -5,15 +5,16 @@ import { DatasetsView } from './dashboard/DatasetsView';
 import { CompareView } from './dashboard/CompareView';
 import { TrainingView } from './dashboard/TrainingView';
 import { ModelDetailsView } from './dashboard/ModelDetailsView';
-import { ReportsView } from './dashboard/ReportsView';
 import { AuditLogsView } from './dashboard/AuditLogsView';
 import { ProfileView } from './dashboard/ProfileView';
+import { AboutView } from './dashboard/AboutView';
 import { useAuth } from '../context/AuthContext';
 
 export const DashboardApp = ({ onBackToLanding }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showProfile, setShowProfile] = useState(false);
   const { user, role, logout } = useAuth();
+  const isAdmin = (role || user?.role) === 'Admin';
 
   const handleLogout = () => {
     logout();
@@ -35,13 +36,13 @@ export const DashboardApp = ({ onBackToLanding }) => {
       case 'compare':
         return <CompareView />;
       case 'training':
-        return <TrainingView onNavigate={setActiveTab} />;
+        return isAdmin ? <TrainingView onNavigate={setActiveTab} /> : <OverviewView onNavigate={setActiveTab} />;
       case 'model-details':
         return <ModelDetailsView />;
-      case 'reports':
-        return <ReportsView />;
       case 'audit-logs':
-        return <AuditLogsView />;
+        return isAdmin ? <AuditLogsView /> : <OverviewView onNavigate={setActiveTab} />;
+      case 'about':
+        return <AboutView />;
       default:
         return <OverviewView onNavigate={setActiveTab} />;
     }

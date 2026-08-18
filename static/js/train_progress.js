@@ -105,6 +105,8 @@ function pollTrainingStatus() {
     }, 1500);
 }
 
+let currentRunId = null;
+
 function updateUIWithStatus(status) {
     const epochElem = document.getElementById("stat-epoch");
     const accElem = document.getElementById("stat-acc");
@@ -127,14 +129,42 @@ function updateUIWithStatus(status) {
         progressBar.textContent = `${pct}%`;
     }
 
-    if (metricsChart && status.current_epoch > 0) {
-        const lastEpochInChart = epochLabels[epochLabels.length - 1];
-        if (lastEpochInChart !== `Epoch ${status.current_epoch}`) {
-            epochLabels.push(`Epoch ${status.current_epoch}`);
-            lossData.push(status.loss);
-            valLossData.push(status.val_loss);
-            accData.push(status.accuracy);
-            valAccData.push(status.val_accuracy);
+    if (metricsChart) {
+        // Reset chart data when starting a new training run ID
+        if (status.run_id && currentRunId !== status.run_id) {
+            currentRunId = status.run_id;
+            epochLabels.length = 0;
+            lossData.length = 0;
+            valLossData.length = 0;
+            accData.length = 0;
+            valAccData.length = 0;
+        }
+
+        // Populate metrics chart from full epoch_history array
+        const history = (status.epoch_history && status.epoch_history.length > 0)
+            ? status.epoch_history
+            : (status.current_epoch > 0 ? [{
+                epoch: status.current_epoch,
+                loss: status.loss,
+                val_loss: status.val_loss,
+                accuracy: status.accuracy,
+                val_accuracy: status.val_accuracy
+            }] : []);
+
+        let updated = false;
+        history.forEach(item => {
+            const label = `Epoch ${item.epoch}`;
+            if (!epochLabels.includes(label)) {
+                epochLabels.push(label);
+                lossData.push(item.loss);
+                valLossData.push(item.val_loss);
+                accData.push(item.accuracy);
+                valAccData.push(item.val_accuracy);
+                updated = true;
+            }
+        });
+
+        if (updated) {
             metricsChart.update('none'); // Update without canvas transition animation lag
         }
     }

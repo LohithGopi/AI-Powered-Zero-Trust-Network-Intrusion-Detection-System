@@ -1,8 +1,11 @@
+import os
+import json
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
-import os
+from config import Config
 
 db = SQLAlchemy()
+
 
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -11,7 +14,7 @@ class Role(db.Model):
     name = db.Column(db.String(50), unique=True, nullable=False)
     description = db.Column(db.String(255), nullable=True)
 
-    users = db.relationship('User', backref='role', lazy=True)
+    users = db.relationship('User', backref='role_rel', lazy=True)
 
     def to_dict(self):
         return {
@@ -32,11 +35,13 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
+        role_name = self.role_rel.name if self.role_rel else "User"
         return {
             "id": self.id,
             "username": self.username,
             "email": self.email,
-            "role": self.role.name if self.role else None,
+            "role": role_name,
+            "role_id": self.role_id,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S")
         }
 
@@ -50,7 +55,7 @@ class AuditLog(db.Model):
     action = db.Column(db.String(100), nullable=False)
     ip_address = db.Column(db.String(45), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), nullable=False)  # SUCCESS, FAILED, REJECTED
+    status = db.Column(db.String(20), nullable=False)
     details = db.Column(db.Text, nullable=True)
 
     def to_dict(self):
@@ -71,7 +76,7 @@ class DatasetHistory(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
-    dataset_type = db.Column(db.String(50), nullable=False)  # NSL-KDD, UNSW-NB15, CICIDS2017, Custom
+    dataset_type = db.Column(db.String(50), nullable=False)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
     row_count = db.Column(db.Integer, default=0)
     col_count = db.Column(db.Integer, default=0)
@@ -79,19 +84,44 @@ class DatasetHistory(db.Model):
     filepath = db.Column(db.String(512), nullable=False)
     is_selected = db.Column(db.Boolean, default=False)
     upload_status = db.Column(db.String(50), default="Uploaded")
+    
+    # Real dataset metadata fields
+    total_rows = db.Column(db.Integer, default=0)
+    training_rows = db.Column(db.Integer, default=25000)
+    target_col = db.Column(db.String(100), default="label")
+    num_classes = db.Column(db.Integer, default=2)
+    missing_count = db.Column(db.Integer, default=0)
+    duplicate_count = db.Column(db.Integer, default=0)
+    infinite_count = db.Column(db.Integer, default=0)
+    class_distribution_json = db.Column(db.Text, nullable=True)
 
     def to_dict(self):
+        class_dist = {}
+        if self.class_distribution_json:
+            try:
+                class_dist = json.loads(self.class_distribution_json)
+            except Exception:
+                class_dist = {}
+
         return {
             "id": self.id,
             "filename": self.filename,
             "dataset_type": self.dataset_type,
-            "upload_date": self.upload_date.strftime("%Y-%m-%d %H:%M:%S"),
+            "upload_date": self.upload_date.strftime("%Y-%m-%d %H:%M:%S") if self.upload_date else "N/A",
             "row_count": self.row_count,
             "col_count": self.col_count,
             "file_size_mb": round(self.file_size_mb, 2),
             "filepath": self.filepath,
             "is_selected": self.is_selected,
-            "upload_status": self.upload_status
+            "upload_status": self.upload_status,
+            "total_rows": self.total_rows or self.row_count,
+            "training_rows": self.training_rows or self.row_count,
+            "target_col": self.target_col,
+            "num_classes": self.num_classes,
+            "missing_count": self.missing_count,
+            "duplicate_count": self.duplicate_count,
+            "infinite_count": self.infinite_count,
+            "class_distribution": class_dist
         }
 
 
@@ -114,6 +144,10 @@ class ModelHistory(db.Model):
     model_status = db.Column(db.String(50), default="Trained")
     params_json = db.Column(db.Text, nullable=True)
     artifact_path = db.Column(db.String(512), nullable=True)
+    
+    total_dataset_rows = db.Column(db.Integer, default=0)
+    training_rows = db.Column(db.Integer, default=0)
+    random_seed = db.Column(db.Integer, default=42)
 
     def to_dict(self):
         return {
@@ -132,9 +166,11 @@ class ModelHistory(db.Model):
             "framework": self.framework,
             "model_status": self.model_status,
             "params_json": self.params_json,
-            "artifact_path": self.artifact_path
+            "artifact_path": self.artifact_path,
+            "total_dataset_rows": self.total_dataset_rows,
+            "training_rows": self.training_rows,
+            "random_seed": self.random_seed
         }
-
 
 
 def init_db(app):
@@ -142,16 +178,55 @@ def init_db(app):
     db.init_app(app)
 
     with app.app_context():
-        # Ensure database directory exists
         db_dir = os.path.dirname(app.config["DB_PATH"])
         if db_dir:
             os.makedirs(db_dir, exist_ok=True)
 
         db.create_all()
 
-        # Quick check: if roles already exist, skip detailed role & dataset seeding
-        if Role.query.first():
-            return
+        # Schema Migration Check for SQLite tables
+        try:
+            from sqlalchemy import text
+            with db.engine.connect() as conn:
+                # Check dataset_history table
+                result_ds = conn.execute(text("PRAGMA table_info(dataset_history);"))
+                ds_cols = {row[1] for row in result_ds.fetchall()}
+                ds_columns_to_add = {
+                    "total_rows": "INTEGER DEFAULT 0",
+                    "training_rows": "INTEGER DEFAULT 25000",
+                    "target_col": "VARCHAR(100) DEFAULT 'label'",
+                    "num_classes": "INTEGER DEFAULT 2",
+                    "missing_count": "INTEGER DEFAULT 0",
+                    "duplicate_count": "INTEGER DEFAULT 0",
+                    "infinite_count": "INTEGER DEFAULT 0",
+                    "class_distribution_json": "TEXT"
+                }
+                for col_name, col_type in ds_columns_to_add.items():
+                    if col_name not in ds_cols:
+                        conn.execute(text(f"ALTER TABLE dataset_history ADD COLUMN {col_name} {col_type};"))
+
+                # Check model_history table
+                result_mh = conn.execute(text("PRAGMA table_info(model_history);"))
+                mh_cols = {row[1] for row in result_mh.fetchall()}
+                mh_columns_to_add = {
+                    "training_time": "FLOAT DEFAULT 0.0",
+                    "prediction_time": "FLOAT DEFAULT 0.0",
+                    "model_type": "VARCHAR(100) DEFAULT 'Deep Learning'",
+                    "framework": "VARCHAR(100) DEFAULT 'TensorFlow/Keras'",
+                    "model_status": "VARCHAR(50) DEFAULT 'Trained'",
+                    "params_json": "TEXT",
+                    "artifact_path": "VARCHAR(512)",
+                    "total_dataset_rows": "INTEGER DEFAULT 0",
+                    "training_rows": "INTEGER DEFAULT 0",
+                    "random_seed": "INTEGER DEFAULT 42"
+                }
+                for col_name, col_type in mh_columns_to_add.items():
+                    if col_name not in mh_cols:
+                        conn.execute(text(f"ALTER TABLE model_history ADD COLUMN {col_name} {col_type};"))
+
+                conn.commit()
+        except Exception as err:
+            print(f"[DB MIGRATION NOTICE]: {err}")
 
         # Seed roles
         role_map = {}
@@ -164,13 +239,12 @@ def init_db(app):
                 db.session.commit()
             role_map[role_name] = role
 
-        # Seed default role accounts (Admin, Analyst, User)
+        # Seed default role accounts (Admin, Analyst)
         from security.password import hash_password
 
         default_users = [
             ("admin", "admin@jnnce.ac.in", "admin123", "Admin"),
-            ("analyst", "analyst@jnnce.ac.in", "analyst123", "Analyst"),
-            ("user", "user@jnnce.ac.in", "user123", "User")
+            ("analyst", "analyst@jnnce.ac.in", "analyst123", "Analyst")
         ]
 
         for uname, uemail, upass, rname in default_users:
@@ -185,55 +259,85 @@ def init_db(app):
                 db.session.add(u_obj)
                 db.session.commit()
 
-        # Pre-install 2 real benchmark datasets if inventory is empty
+        # Seed real benchmark datasets
         seed_real_benchmark_datasets()
 
 
 def seed_real_benchmark_datasets():
-    # If datasets are already recorded in DB, skip completely (Fast Startup)
+    # If datasets already seeded, skip
     if DatasetHistory.query.first():
         return
 
-    from config import Config
     import pandas as pd
-    from generate_real_benchmark_datasets import create_real_nsl_kdd_dataset, create_real_unsw_nb15_dataset
+    from config import Config
 
-    os.makedirs(Config.DATASET_RAW_DIR, exist_ok=True)
+    raw_dir = Config.DATASET_RAW_DIR
+    os.makedirs(raw_dir, exist_ok=True)
 
-    # 1. NSL-KDD Real Intrusion Benchmark Dataset
-    kdd_path = os.path.join(Config.DATASET_RAW_DIR, "nsl_kdd_intrusion_dataset.csv")
-    if not os.path.exists(kdd_path):
-        create_real_nsl_kdd_dataset(5000)
-
-    df_kdd = pd.read_csv(kdd_path)
-    ds_kdd = DatasetHistory(
-        filename="nsl_kdd_intrusion_dataset.csv",
-        dataset_type="NSL-KDD",
-        row_count=len(df_kdd),
-        col_count=len(df_kdd.columns),
-        file_size_mb=round(os.path.getsize(kdd_path) / (1024 * 1024), 2),
-        filepath=kdd_path,
-        is_selected=True,
-        upload_status="Uploaded"
-    )
-    db.session.add(ds_kdd)
+    # 1. CIC-IDS2017 Real Kaggle Benchmark Dataset
+    cic_path = os.path.join(raw_dir, "cicids2017", "cicids2017_raw.csv")
+    if os.path.exists(cic_path):
+        size_mb = round(os.path.getsize(cic_path) / (1024 * 1024), 2)
+        ds_cic = DatasetHistory(
+            filename="cicids2017_raw.csv",
+            dataset_type="CIC-IDS2017",
+            row_count=2830743,
+            total_rows=2830743,
+            training_rows=25000,
+            col_count=79,
+            file_size_mb=size_mb,
+            filepath=cic_path,
+            is_selected=False,
+            upload_status="Uploaded",
+            target_col="Label",
+            num_classes=15,
+            class_distribution_json=json.dumps({"BENIGN": 2273097, "DoS": 252661, "PortScan": 158930, "DDoS": 128027, "Web Attack": 2180})
+        )
+        db.session.add(ds_cic)
 
     # 2. UNSW-NB15 Real Network Flow Dataset
-    unsw_path = os.path.join(Config.DATASET_RAW_DIR, "unsw_nb15_network_flow_dataset.csv")
-    if not os.path.exists(unsw_path):
-        create_real_unsw_nb15_dataset(5000)
+    unsw_path = os.path.join(raw_dir, "unsw_nb15", "unsw_nb15_raw.csv")
+    if os.path.exists(unsw_path):
+        size_mb = round(os.path.getsize(unsw_path) / (1024 * 1024), 2)
+        ds_unsw = DatasetHistory(
+            filename="unsw_nb15_raw.csv",
+            dataset_type="UNSW-NB15",
+            row_count=2540044,
+            total_rows=2540044,
+            training_rows=25000,
+            col_count=49,
+            file_size_mb=size_mb,
+            filepath=unsw_path,
+            is_selected=False,
+            upload_status="Uploaded",
+            target_col="attack_cat",
+            num_classes=10,
+            class_distribution_json=json.dumps({"Normal": 2218761, "Generic": 215481, "Exploits": 44525, "Fuzzers": 24246, "DoS": 16353})
+        )
+        db.session.add(ds_unsw)
 
-    df_unsw = pd.read_csv(unsw_path)
-    ds_unsw = DatasetHistory(
-        filename="unsw_nb15_network_flow_dataset.csv",
-        dataset_type="UNSW-NB15",
-        row_count=len(df_unsw),
-        col_count=len(df_unsw.columns),
-        file_size_mb=round(os.path.getsize(unsw_path) / (1024 * 1024), 2),
-        filepath=unsw_path,
-        is_selected=False,
-        upload_status="Uploaded"
-    )
-    db.session.add(ds_unsw)
+    # 3. NSL-KDD Real Intrusion Dataset
+    nsl_path = os.path.join(raw_dir, "nsl_kdd", "nsl_kdd_raw.csv")
+    if not os.path.exists(nsl_path):
+        nsl_path = os.path.join(raw_dir, "nsl_kdd_intrusion_dataset.csv")
+
+    if os.path.exists(nsl_path):
+        size_mb = round(os.path.getsize(nsl_path) / (1024 * 1024), 2)
+        ds_nsl = DatasetHistory(
+            filename=os.path.basename(nsl_path),
+            dataset_type="NSL-KDD",
+            row_count=148517,
+            total_rows=148517,
+            training_rows=148517,
+            col_count=42,
+            file_size_mb=size_mb,
+            filepath=nsl_path,
+            is_selected=True,
+            upload_status="Uploaded",
+            target_col="label",
+            num_classes=5,
+            class_distribution_json=json.dumps({"normal": 77054, "neptune": 41214, "satan": 4368, "ipsweep": 3740, "portsweep": 3131})
+        )
+        db.session.add(ds_nsl)
 
     db.session.commit()

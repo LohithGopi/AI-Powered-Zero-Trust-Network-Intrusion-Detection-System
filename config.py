@@ -22,9 +22,35 @@ class Config:
 
     # Directory Paths
     DATASET_RAW_DIR = os.path.join(BASE_DIR, "datasets", "raw")
+    DATASET_SAMPLED_DIR = os.path.join(BASE_DIR, "datasets", "sampled")
     DATASET_PROCESSED_DIR = os.path.join(BASE_DIR, "datasets", "processed")
     MODEL_DIR = os.path.join(BASE_DIR, "models")
     LOG_DIR = os.path.join(BASE_DIR, "logs")
+
+    # Dataset Default Limits & Specifications
+    DATASET_LIMITS = {
+        "CIC-IDS2017": {
+            "total_rows": 2830743,
+            "default_training_rows": 25000,
+            "min_training_rows": 25000,
+            "max_training_rows": 50000,
+            "allow_full": False
+        },
+        "UNSW-NB15": {
+            "total_rows": 2540044,
+            "default_training_rows": 25000,
+            "min_training_rows": 25000,
+            "max_training_rows": 50000,
+            "allow_full": False
+        },
+        "NSL-KDD": {
+            "total_rows": 148517,
+            "default_training_rows": 148517,
+            "min_training_rows": 1000,
+            "max_training_rows": 148517,
+            "allow_full": True
+        }
+    }
 
     # Artifact File Paths
     MODEL_FILE_PATH = os.path.join(MODEL_DIR, "lstm_model.keras")
@@ -36,7 +62,7 @@ class Config:
     ALLOWED_EXTENSIONS = {"csv"}
 
     # Zero Trust & Role Configuration
-    ROLES = ["Admin", "Analyst", "User"]
+    ROLES = ["Admin", "Analyst"]
     DEFAULT_ADMIN_USER = "admin"
     DEFAULT_ADMIN_PASS = "Admin@123"
     DEFAULT_ADMIN_EMAIL = "admin@zerotrust-nids.local"

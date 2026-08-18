@@ -232,5 +232,43 @@ def delete_dataset_api(dataset_id):
             ip_address=request.remote_addr,
             details=f"Failed to delete dataset '{filename}': {str(e)}"
         )
-        return jsonify({"error": f"Failed to delete dataset: {str(e)}"}), 500
+@dataset_bp.route("/api/datasets/<int:dataset_id>/sample", methods=["POST"])
+@jwt_required
+def sample_dataset_api(dataset_id):
+    ds = DatasetHistory.query.get(dataset_id)
+    if not ds:
+        return jsonify({"error": "Dataset not found."}), 404
+
+    data = request.get_json() or {}
+    training_rows = int(data.get("training_rows", 25000))
+    random_seed = int(data.get("random_seed", 42))
+
+    try:
+        from preprocessing.sampler import StratifiedNIDSSampler
+        _, class_dist_before, class_dist_after, total_raw_rows, actual_sampled_rows, target_col = StratifiedNIDSSampler.sample_dataset(
+            file_path=ds.filepath,
+            target_rows=training_rows,
+            random_seed=random_seed,
+            dataset_type=ds.dataset_type
+        )
+
+        return jsonify({
+            "dataset_id": ds.id,
+            "dataset_name": ds.filename,
+            "dataset_type": ds.dataset_type,
+            "total_available_rows": total_raw_rows,
+            "requested_rows": training_rows,
+            "actual_sampled_rows": actual_sampled_rows,
+            "sampling_method": "Stratified Class-Aware",
+            "random_seed": random_seed,
+            "target_col": target_col,
+            "features_count": ds.col_count - 1,
+            "num_classes": len(class_dist_after),
+            "class_distribution_before": class_dist_before,
+            "class_distribution_after": class_dist_after
+        }), 200
+    except Exception as e:
+        logger.error(f"Sampling preview error: {e}")
+        return jsonify({"error": str(e)}), 400
+
 

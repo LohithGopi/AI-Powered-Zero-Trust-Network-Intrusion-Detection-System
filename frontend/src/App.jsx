@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
@@ -39,7 +40,7 @@ const AppRouter = () => {
     );
   }
 
-  if (currentView === 'dashboard') {
+  if (currentView === 'dashboard' || (isAuthenticated && currentView !== 'landing')) {
     return (
       <DashboardApp 
         onBackToLanding={() => {
@@ -64,10 +65,12 @@ const AppRouter = () => {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AppRouter />
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRouter />
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Shield, Lock, User, ArrowLeft, CheckCircle2, AlertCircle, Key } from 'lucide-react';
+import { Shield, Lock, User, ArrowLeft, CheckCircle2, AlertCircle, Key, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginPage = ({ onBackToLanding, onForgotPassword, onSuccessLogin }) => {
   const { login } = useAuth();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin123');
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState('Admin');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,12 +16,9 @@ export const LoginPage = ({ onBackToLanding, onForgotPassword, onSuccessLogin })
     if (roleName === 'Admin') {
       setUsername('admin');
       setPassword('admin123');
-    } else if (roleName === 'Analyst') {
+    } else {
       setUsername('analyst');
       setPassword('analyst123');
-    } else {
-      setUsername('user');
-      setPassword('user123');
     }
   };
 
@@ -74,8 +72,8 @@ export const LoginPage = ({ onBackToLanding, onForgotPassword, onSuccessLogin })
           </div>
 
           {/* Role Selection Tabs */}
-          <div className="grid grid-cols-3 gap-1 bg-[#F5F7FA] dark:bg-[#0B0D0F] p-1 rounded-xl border border-[#E2E8F0] dark:border-[#252A2E] mb-6 text-xs font-medium">
-            {['Admin', 'Analyst', 'User'].map((role) => (
+          <div className="grid grid-cols-2 gap-1 bg-[#F5F7FA] dark:bg-[#0B0D0F] p-1 rounded-xl border border-[#E2E8F0] dark:border-[#252A2E] mb-6 text-xs font-medium">
+            {['Admin', 'Analyst'].map((role) => (
               <button
                 key={role}
                 type="button"
@@ -121,13 +119,22 @@ export const LoginPage = ({ onBackToLanding, onForgotPassword, onSuccessLogin })
                   Forgot Password?
                 </button>
               </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] focus:border-[#1769E0] focus:bg-white rounded-lg p-2.5 text-xs text-[#172033] dark:text-[#F3F4F1] outline-none transition-colors"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-[#F5F7FA] dark:bg-[#0B0D0F] border border-[#E2E8F0] dark:border-[#252A2E] focus:border-[#1769E0] focus:bg-white rounded-lg p-2.5 pr-10 text-xs text-[#172033] dark:text-[#F3F4F1] outline-none transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] dark:text-[#9FA6A8] hover:text-[#1769E0] transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <button
